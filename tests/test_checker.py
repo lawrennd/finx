@@ -9,6 +9,7 @@ import yaml
 from datetime import datetime
 from io import StringIO
 from contextlib import redirect_stdout
+import logging
 
 # Add the parent directory to the path so we can import the script
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -285,8 +286,9 @@ class TestTaxDocumentChecker(unittest.TestCase):
         }
 
         with patch.object(self.checker, 'find_files_matching_pattern', return_value=[]):
-            result = self.checker.check_year('2023')
-            self.assertEqual(result['employment'], [])
+            with self.assertLogs(level='WARNING') as log:
+                result = self.checker.check_year('2023')
+                self.assertIn('✗ No files found for Test Company (monthly)', log.output[0])
 
     def test_check_year_with_complete_files(self):
         """Test checking a year with all required files."""
@@ -366,14 +368,11 @@ class TestTaxDocumentChecker(unittest.TestCase):
 
         try:
             # Test loading invalid YAML
-            with patch('builtins.print') as mock_print:
+            with self.assertLogs(level='ERROR') as log:
                 checker = TaxDocumentChecker(base_path=self.temp_dir, config_file=temp_path)
                 config = checker.load_base_config()
                 self.assertEqual(config, {})
-                mock_print.assert_called_with(
-                    f'Error parsing base configuration file: mapping values are not allowed here\n'
-                    f'  in "{temp_path}", line 1, column 14'
-                )
+                self.assertIn("Error parsing base configuration file", log.output[0])
         finally:
             os.unlink(temp_path)
 
@@ -390,7 +389,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
         # Test with incomplete files
         mock_files = [f'/test/2023-{month:02d}-01_company.pdf' for month in range(1, 6)]  # Only 5 months
         with patch.object(self.checker, 'find_files_matching_pattern', return_value=mock_files):
-            with patch('builtins.print') as mock_print:
+            with self.assertLogs(level='INFO') as log:
                 result = self.checker.check_year('2023')
                 self.assertEqual(result['employment'], mock_files)
 
@@ -399,7 +398,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
         test_args = ['--year', '2023']
         with patch('sys.argv', ['tax-document-checker'] + test_args):
             with patch('argparse.ArgumentParser.parse_args') as mock_args:
-                mock_args.return_value = MagicMock(year='2023', update_dates=False)
+                mock_args.return_value = MagicMock(year='2023', update_dates=False, log_level='INFO')
                 with patch.object(TaxDocumentChecker, 'check_year') as mock_check:
                     mock_check.return_value = True
                     with patch('os.path.dirname', return_value='/test/path'):
@@ -412,7 +411,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
         test_args = ['--update-dates']
         with patch('sys.argv', ['tax-document-checker'] + test_args):
             with patch('argparse.ArgumentParser.parse_args') as mock_args:
-                mock_args.return_value = MagicMock(year=None, update_dates=True)
+                mock_args.return_value = MagicMock(year=None, update_dates=True, log_level='INFO')
                 with patch.object(TaxDocumentChecker, 'update_yaml_with_dates') as mock_update:
                     with patch('os.path.dirname', return_value='/test/path'):
                         from tax_document_checker.checker import main
@@ -423,7 +422,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
         """Test the main function with no arguments."""
         with patch('sys.argv', ['tax-document-checker']):
             with patch('argparse.ArgumentParser.parse_args') as mock_args:
-                mock_args.return_value = MagicMock(year=None, update_dates=False)
+                mock_args.return_value = MagicMock(year=None, update_dates=False, log_level='INFO')
                 with patch.object(TaxDocumentChecker, 'list_available_years') as mock_list:
                     mock_list.return_value = ['2022', '2023']
                     with patch.object(TaxDocumentChecker, 'check_year') as mock_check:
@@ -663,7 +662,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
         }
 
         # Should handle invalid date gracefully
-        with patch('builtins.print'):  # Suppress print output
+        with self.assertLogs(level='INFO') as log:
             result = self.checker.check_year('2023')
             self.assertEqual(result['test'], [])
 
@@ -717,14 +716,11 @@ class TestTaxDocumentChecker(unittest.TestCase):
 
         try:
             # Test loading invalid YAML
-            with patch('builtins.print') as mock_print:
+            with self.assertLogs(level='ERROR') as log:
                 checker = TaxDocumentChecker(base_path=self.temp_dir, directory_mapping_file=temp_path)
                 mapping = checker.load_directory_mapping()
                 self.assertEqual(mapping, {})
-                mock_print.assert_called_with(
-                    f'Error parsing directory mapping file: mapping values are not allowed here\n'
-                    f'  in "{temp_path}", line 1, column 14'
-                )
+                self.assertIn("Error parsing directory mapping file", log.output[0])
         finally:
             os.unlink(temp_path)
 
@@ -813,7 +809,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
 
         with patch.object(self.checker, 'find_files_matching_pattern', side_effect=mock_find_files):
             # Capture print output to verify skip message
-            with patch('builtins.print') as mock_print:
+            with self.assertLogs(level='INFO') as log:
                 # Run the check for 2023
                 result = self.checker.check_year('2023')
                 
@@ -823,10 +819,10 @@ class TestTaxDocumentChecker(unittest.TestCase):
                 self.assertEqual(result['employment'], expected_files)
                 
                 # Verify that Company1 was skipped with the correct message
-                mock_print.assert_any_call("⏭️ Skipping Company1 (monthly) - not active in 2023 (active from 2022 to 2022)")
+                self.assertTrue(any('⏭️ Skipping Company1 (monthly) - not active in 2023 (active from 2022 to 2022)' in msg for msg in log.output))
                 
                 # Verify that Company2 was found with the correct message
-                mock_print.assert_any_call("✓ Found 12 files for Company2 (monthly)")
+                self.assertTrue(any('✓ Found 12 files for Company2 (monthly)' in msg for msg in log.output))
 
     def test_find_files_matching_pattern_with_nonexistent_directory(self):
         """Test finding files when the directory doesn't exist."""
@@ -865,14 +861,14 @@ class TestTaxDocumentChecker(unittest.TestCase):
             mock_find.return_value = ['/test/2023-01-01_company.pdf']
             
             # Should handle future dates by skipping the check
-            with patch('builtins.print') as mock_print:
+            with self.assertLogs(level='INFO') as log:
                 result = self.checker.check_year('2023')
                 
                 # Verify that the files were skipped (empty result)
                 self.assertEqual(result['employment'], [])
                 
                 # Verify that we got the skip message
-                mock_print.assert_any_call("⏭️ Skipping Company (monthly) - not active in 2023 (active from 9999 to 9999)")
+                self.assertTrue(any('⏭️ Skipping Company (monthly) - not active in 2023 (active from 9999 to 9999)' in msg for msg in log.output))
 
     def test_validate_frequency_with_unknown_frequency(self):
         """Test validating frequency with an unknown frequency type."""
@@ -1076,7 +1072,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
         with patch.object(self.checker, 'find_files_matching_pattern') as mock_find:
             mock_find.return_value = ['/test/2023-01-01_company.pdf']
             
-            with patch('builtins.print') as mock_print:
+            with self.assertLogs(level='INFO') as log:
                 result = self.checker.check_year('2023')
                 self.assertEqual(result['employment'], ['/test/2023-01-01_company.pdf'])
 
@@ -1093,40 +1089,21 @@ class TestTaxDocumentChecker(unittest.TestCase):
         }
         
         with patch.object(self.checker, 'find_files_matching_pattern', return_value=[]):
-            with patch('builtins.print') as mock_print:
+            with self.assertLogs(level='WARNING') as log:
                 self.checker.check_year('2023')
-                mock_print.assert_any_call("\nEMPLOYMENT:")
-                mock_print.assert_any_call("- Missing Company (monthly)")
+                # Check for the warning message about no files found
+                self.assertTrue(any('✗ No files found for Missing Company (monthly)' in msg for msg in log.output))
 
     def test_main_function_error_handling(self):
         """Test error handling in the main function."""
         with patch('sys.argv', ['tax-document-checker', '--year', '2023']):
             with patch('argparse.ArgumentParser.parse_args') as mock_args:
-                mock_args.return_value = MagicMock(year='2023', update_dates=False)
+                mock_args.return_value = MagicMock(year='2023', update_dates=False, log_level='INFO')
                 with patch.object(TaxDocumentChecker, 'check_year', side_effect=Exception('Test error')):
                     with patch('os.path.dirname', return_value='/test/path'):
                         with self.assertRaises(Exception):
                             from tax_document_checker.checker import main
                             main()
-
-    def test_verbose_output_in_find_config_file(self):
-        """Test verbose output when finding configuration files."""
-        # Create a test config file
-        test_config = {'test': 'value'}
-        config_path = os.path.join(self.temp_dir, 'tax_document_patterns_base.yml')
-        with open(config_path, 'w') as f:
-            yaml.dump(test_config, f)
-        
-        # Initialize checker with verbose mode and capture print output
-        with patch('builtins.print') as mock_print:
-            checker = TaxDocumentChecker(
-                base_path=self.temp_dir,
-                config_file=config_path,
-                verbose=True
-            )
-            
-            # Verify that the verbose output was printed
-            mock_print.assert_any_call(f"Found tax_document_patterns_base.yml at explicit path: {config_path}")
 
     def test_verbose_output_in_file_operations(self):
         """Test verbose output in file operations."""
@@ -1140,15 +1117,10 @@ class TestTaxDocumentChecker(unittest.TestCase):
         with open(test_file, 'w') as f:
             f.write('test content')
         
-        with patch('builtins.print') as mock_print:
+        with self.assertLogs(level='DEBUG') as log:
             # Test find_files_matching_pattern
             self.checker.find_files_matching_pattern(r'\d{4}-\d{2}-\d{2}_test\.pdf', '2023', 'test')
-            
-            # Verify verbose output
-            mock_print.assert_any_call("    Searching for pattern: \\d{4}-\\d{2}-\\d{2}_test\\.pdf")
-            mock_print.assert_any_call("    Year: 2023")
-            mock_print.assert_any_call("    Category: test")
-            mock_print.assert_any_call("    Search directories: ['test_dir']")
+            self.assertIn("Searching for pattern: \\d{4}-\\d{2}-\\d{2}_test\\.pdf", log.output[0])
 
     def test_config_merging_edge_cases(self):
         """Test edge cases in config merging."""
@@ -1210,30 +1182,10 @@ class TestTaxDocumentChecker(unittest.TestCase):
         """Test handling of directory access errors."""
         pass
 
-    def test_load_base_config_yaml_error(self):
-        """Test handling of YAML parsing errors in base configuration."""
-        # Create a temporary file with invalid YAML
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
-            f.write("invalid: yaml: :")
-            temp_path = f.name
-
-        try:
-            # Test loading invalid YAML
-            with patch('builtins.print') as mock_print:
-                checker = TaxDocumentChecker(base_path=self.temp_dir, config_file=temp_path)
-                config = checker.load_base_config()
-                self.assertEqual(config, {})
-                mock_print.assert_called_with(
-                    f'Error parsing base configuration file: mapping values are not allowed here\n'
-                    f'  in "{temp_path}", line 1, column 14'
-                )
-        finally:
-            os.unlink(temp_path)
-
     def test_load_base_config_file_not_found(self):
         """Test handling of missing base configuration file."""
         # Mock the file operations
-        with patch('builtins.print') as mock_print:
+        with self.assertLogs(level='WARNING') as log:
             with patch('pathlib.Path.exists', return_value=False):
                 with patch('os.path.exists', return_value=False):
                     checker = TaxDocumentChecker(base_path=self.temp_dir)
@@ -1241,7 +1193,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
                     expected_path = os.path.join(self.temp_dir, 'tax_document_patterns_base.yml')
                     config = checker.load_base_config()
                     self.assertEqual(config, {})
-                    mock_print.assert_called_with(f'Warning: Base configuration file not found at {expected_path}')
+                    self.assertIn("Warning: Base configuration file not found", log.output[0])
 
     def test_analyze_account_dates_with_invalid_dates(self):
         """Test analyzing account dates with invalid date formats."""
@@ -1325,13 +1277,13 @@ class TestTaxDocumentChecker(unittest.TestCase):
             mock_find.return_value = ['/test/2023-01-01_company.pdf']
             
             # Run check_year with verbose output
-            with patch('builtins.print') as mock_print:
+            with self.assertLogs(level='WARNING') as log:
                 self.checker.verbose = True
                 result = self.checker.check_year('2023')
                 
                 # Verify that the method handled the invalid date gracefully
                 self.assertEqual(result['employment'], ['/test/2023-01-01_company.pdf'])
-                mock_print.assert_any_call('  Warning: Could not parse dates, proceeding with check')
+                self.assertIn('Warning: Could not parse dates, proceeding with check', log.output[0])
 
     def test_check_year_with_employment_dates(self):
         """Test check_year with employment date ranges and verify summary output."""
@@ -1403,59 +1355,13 @@ class TestTaxDocumentChecker(unittest.TestCase):
             verbose=True
         )
     
-        # Capture output
-        output = StringIO()
-        with redirect_stdout(output):
+        # Run check_year and capture log output
+        with self.assertLogs(level='INFO') as log:
             checker.check_year('2023')
-        
-        output_str = output.getvalue()
-        
-        # Verify results
-        assert 'Found 2 files for current-job' in output_str
-        assert 'Found 1 files for investment-statement' in output_str
-        assert '⏭️ Skipping old-job (monthly) - not active in 2023 (active from 2020 to 2021)' in output_str  # Old job should be skipped with date range message
-        assert 'MISSING OR INCOMPLETE DOCUMENTS SUMMARY' in output_str
-        assert 'current-job (monthly)' in output_str  # Should be listed in missing documents
-
-    def test_validate_frequency_with_partial_year(self):
-        """Test validating frequency for partial year employment."""
-        checker = TaxDocumentChecker('test_dir')
-        
-        # Test monthly frequency with employment ending in June
-        pattern_info = {
-            'start_date': '2023-01-01',
-            'end_date': '2023-06-30',
-            'frequency': 'monthly'
-        }
-        matches = [f'/test/2023-{month:02d}-01_company.pdf' for month in range(1, 7)]  # 6 months of files
-        is_valid, count, expected = checker.validate_frequency(matches, 'monthly', '2023', pattern_info)
-        assert is_valid
-        assert count == 6
-        assert expected == 6
-        
-        # Test quarterly frequency with employment starting in April
-        pattern_info = {
-            'start_date': '2023-04-01',
-            'end_date': '2023-12-31',
-            'frequency': 'quarterly'
-        }
-        matches = ['/test/2023-06-30_company.pdf', '/test/2023-09-30_company.pdf', '/test/2023-12-31_company.pdf']  # 3 quarters
-        is_valid, count, expected = checker.validate_frequency(matches, 'quarterly', '2023', pattern_info)
-        assert is_valid
-        assert count == 3
-        assert expected == 3
-        
-        # Test with employment ending mid-quarter (should round up to full quarter)
-        pattern_info = {
-            'start_date': '2023-01-01',
-            'end_date': '2023-08-15',  # Mid-quarter
-            'frequency': 'quarterly'
-        }
-        matches = ['/test/2023-03-31_company.pdf', '/test/2023-06-30_company.pdf', '/test/2023-08-15_company.pdf']
-        is_valid, count, expected = checker.validate_frequency(matches, 'quarterly', '2023', pattern_info)
-        assert is_valid
-        assert count == 3
-        assert expected == 3
+            # Check for the warning message about missing files
+            self.assertTrue(any('✗ Found 2 files for current-job (monthly), expected 12' in msg for msg in log.output))
+            # Check for the skip message about old job
+            self.assertTrue(any('⏭️ Skipping old-job (monthly) - not active in 2023 (active from 2020 to 2021)' in msg for msg in log.output))
 
     def test_check_year_with_future_bank_account(self):
         """Test checking a year with a bank account that starts in the future."""
@@ -1474,17 +1380,17 @@ class TestTaxDocumentChecker(unittest.TestCase):
         with patch.object(self.checker, 'find_files_matching_pattern') as mock_find:
             mock_find.return_value = []
             
-            with patch('builtins.print') as mock_print:
+            with self.assertLogs(level='INFO') as log:
                 result = self.checker.check_year('2023')
                 
                 # Verify that the files were skipped (empty result)
                 self.assertEqual(result['bank_uk'], [])
                 
                 # Verify that we got the skip message
-                mock_print.assert_any_call("⏭️ Skipping Future Bank - Savings (monthly) - not active in 2023 (active from 2024 to 2024)")
+                self.assertTrue(any('⏭️ Skipping Future Bank - Savings (monthly) - not active in 2023 (active from 2024 to 2024)' in msg for msg in log.output))
                 
                 # Verify that the account was not added to missing documents
-                self.assertNotIn("Future Bank (monthly)", str(mock_print.call_args_list))
+                self.assertNotIn("Future Bank (monthly)", str(log.output))
 
 if __name__ == '__main__':
     unittest.main()

@@ -3,10 +3,35 @@
 import os
 import re
 import yaml
+import logging
 from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
 from typing import Optional
+
+# Configure logging
+def setup_logging(log_level=logging.INFO):
+    """Set up logging configuration."""
+    log_file = Path('tax_document_checker.log')
+    
+    # Create a formatter
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    
+    # Set up file handler
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setFormatter(formatter)
+    
+    # Set up console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(log_level)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+    
+    return root_logger
 
 # Standard patterns used across all document types
 STANDARD_PATTERNS = {
@@ -35,43 +60,45 @@ class TaxDocumentChecker:
             directory_mapping_file: Path to the directory mapping configuration file
             verbose: Whether to print verbose output
         """
+        self.logger = logging.getLogger('TaxDocumentChecker')
         self.base_path = Path(base_path)
         self.tax_year_path = Path(tax_year_path) if tax_year_path else None
         self.verbose = verbose
         
         if self.verbose:
-            print(f"Initializing TaxDocumentChecker with base_path: {self.base_path}")
+            self.logger.setLevel(logging.DEBUG)
+            self.logger.debug(f"Initializing TaxDocumentChecker with base_path: {self.base_path}")
         
         # Search for config files in multiple locations
         def find_config_file(filename, explicit_path=None):
             if explicit_path and os.path.exists(explicit_path):
                 if self.verbose:
-                    print(f"Found {filename} at explicit path: {explicit_path}")
+                    self.logger.debug(f"Found {filename} at explicit path: {explicit_path}")
                 return explicit_path
             
             # Try current working directory
             cwd_path = Path.cwd() / filename
             if cwd_path.exists():
                 if self.verbose:
-                    print(f"Found {filename} in current working directory: {cwd_path}")
+                    self.logger.debug(f"Found {filename} in current working directory: {cwd_path}")
                 return str(cwd_path)
             
             # Try base directory
             base_dir_path = self.base_path / filename
             if base_dir_path.exists():
                 if self.verbose:
-                    print(f"Found {filename} in base directory: {base_dir_path}")
+                    self.logger.debug(f"Found {filename} in base directory: {base_dir_path}")
                 return str(base_dir_path)
             
             # Try code directory as fallback
             code_path = Path(__file__).parent.parent / filename
             if code_path.exists():
                 if self.verbose:
-                    print(f"Found {filename} in code directory")
+                    self.logger.debug(f"Found {filename} in code directory")
                 return str(code_path)
             
             if self.verbose:
-                print(f"Could not find {filename}")
+                self.logger.warning(f"Could not find {filename}")
             
             # Return a default path in the base directory if no file is found
             default_path = self.base_path / filename
@@ -83,7 +110,7 @@ class TaxDocumentChecker:
         self.directory_mapping_file = find_config_file('directory_mapping.yml', directory_mapping_file)
         
         if self.verbose:
-            print("\nLoading configurations...")
+            self.logger.info("\nLoading configurations...")
         
         self.base_config = self.load_base_config()
         self.private_config = self.load_private_config()
@@ -94,15 +121,15 @@ class TaxDocumentChecker:
         self.account_dates = {}
         
         if self.verbose:
-            print("\nFlattening configuration...")
+            self.logger.info("\nFlattening configuration...")
         self.required_patterns = self.flatten_config()
         
         if self.verbose:
-            print("\nAnalyzing account dates...")
+            self.logger.info("\nAnalyzing account dates...")
         self.account_dates = self.analyze_account_dates()
         
         if self.verbose:
-            print("Initialization complete")
+            self.logger.info("Initialization complete")
 
     def load_base_config(self):
         """Load base configuration from YAML file."""
@@ -112,10 +139,10 @@ class TaxDocumentChecker:
                     try:
                         return yaml.safe_load(f)
                     except yaml.YAMLError as e:
-                        print(f"Error parsing base configuration file: {e}")
+                        self.logger.error(f"Error parsing base configuration file: {e}")
                         return {}
             except FileNotFoundError:
-                print(f"Warning: Base configuration file not found at {self.config_file}")
+                self.logger.warning(f"Warning: Base configuration file not found at {self.config_file}")
                 return {}
         return {}
 
@@ -127,10 +154,10 @@ class TaxDocumentChecker:
                     try:
                         return yaml.safe_load(f)
                     except yaml.YAMLError as e:
-                        print(f"Error parsing private configuration file: {e}")
+                        self.logger.error(f"Error parsing private configuration file: {e}")
                         return {}
             except FileNotFoundError:
-                print(f"Warning: Private configuration file not found at {self.private_config_file}")
+                self.logger.warning(f"Warning: Private configuration file not found at {self.private_config_file}")
                 return {}
         return {}
 
@@ -138,7 +165,7 @@ class TaxDocumentChecker:
         """Load directory mapping from YAML file."""
         if not self.directory_mapping_file:
             if self.verbose:
-                print("No directory mapping file specified")
+                self.logger.warning("No directory mapping file specified")
             return {}
             
         try:
@@ -147,10 +174,10 @@ class TaxDocumentChecker:
                     config = yaml.safe_load(f)
                     return config.get('directory_mapping', {})
                 except yaml.YAMLError as e:
-                    print(f"Error parsing directory mapping file: {e}")
+                    self.logger.error(f"Error parsing directory mapping file: {e}")
                     return {}
         except FileNotFoundError:
-            print(f"Warning: Directory mapping file not found at {self.directory_mapping_file}")
+            self.logger.warning(f"Warning: Directory mapping file not found at {self.directory_mapping_file}")
             return {}
 
     def merge_configs(self):
@@ -217,6 +244,7 @@ class TaxDocumentChecker:
         config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
         with open(config_path, 'w') as f:
             yaml.dump(config, f, sort_keys=False, default_flow_style=False)
+        self.logger.info(f"Saved configuration to {config_path}")
 
     def extract_date_from_filename(self, filename):
         """Extract date from filename using the standard date pattern."""
@@ -368,6 +396,7 @@ class TaxDocumentChecker:
         
         # Save the updated configuration to the private file only
         self.save_config(updated_config, is_private=True)
+        self.logger.info(f"Updated YAML file with dates: {self.private_config_file}")
         return updated_config
 
     def build_pattern(self, base, suffix=None, account_type=None, identifiers=None):
@@ -395,7 +424,7 @@ class TaxDocumentChecker:
 
     def flatten_config(self):
         """Flatten the configuration into a list of patterns for each category."""
-        print("Starting to flatten config...")
+        self.logger.info("Starting to flatten config...")
         patterns = {
             'employment': [],
             'investment_us': [],
@@ -406,15 +435,15 @@ class TaxDocumentChecker:
         }
 
         if not self.config:
-            print("No config found, returning empty patterns")
+            self.logger.info("No config found, returning empty patterns")
             return patterns
 
-        print("Processing employment patterns...")
+        self.logger.info("Processing employment patterns...")
         # Process employment patterns
         if 'employment' in self.config:
             # Process all employment records regardless of category
             for category in self.config['employment']:
-                print(f"Processing employment category: {category}")
+                self.logger.info(f"Processing employment category: {category}")
                 for employer in self.config['employment'][category]:
                     if 'patterns' in employer and employer['patterns']:
                         for pattern in employer['patterns']:
@@ -436,12 +465,12 @@ class TaxDocumentChecker:
                                     'end_date': employer.get('end_date')
                                 })
 
-        print("Processing investment patterns...")
+        self.logger.info("Processing investment patterns...")
         # Process investment patterns
         if 'investment' in self.config:
             for region in ['uk', 'us']:
                 if region in self.config['investment']:
-                    print(f"Processing investment region: {region}")
+                    self.logger.info(f"Processing investment region: {region}")
                     for account in self.config['investment'][region]:
                         if isinstance(account, str):
                             # Handle string patterns directly
@@ -470,12 +499,12 @@ class TaxDocumentChecker:
                                         'end_date': account.get('end_date')
                                     })
 
-        print("Processing bank patterns...")
+        self.logger.info("Processing bank patterns...")
         # Process bank patterns
         if 'bank' in self.config:
             for region in ['uk', 'us']:
                 if region in self.config['bank']:
-                    print(f"Processing bank region: {region}")
+                    self.logger.info(f"Processing bank region: {region}")
                     for bank in self.config['bank'][region]:
                         if isinstance(bank, str):
                             # Handle string patterns directly
@@ -485,7 +514,7 @@ class TaxDocumentChecker:
                                 'frequency': 'monthly'  # Default frequency for bank statements
                             })
                         elif isinstance(bank, dict):
-                            print(f"Processing bank: {bank.get('name', 'unknown')}")
+                            self.logger.info(f"Processing bank: {bank.get('name', 'unknown')}")
                             # Process account types if present
                             account_types = bank.get('account_types')
                             if account_types is not None:
@@ -505,7 +534,7 @@ class TaxDocumentChecker:
                                                 patterns[f'bank_{region}'].append({
                                                     'pattern': full_pattern,
                                                     'name': f"{bank['name']} - {account_type['name']}",
-                                                    'frequency': account_type.get('frequency', 'monthly'),
+                                                    'frequency': account_type.get('frequency', bank.get('frequency', 'monthly')),
                                                     'start_date': pattern.get('start_date'),
                                                     'end_date': pattern.get('end_date')
                                                 })
@@ -530,7 +559,7 @@ class TaxDocumentChecker:
                                             'end_date': pattern.get('end_date')
                                         })
 
-        print("Processing additional patterns...")
+        self.logger.info("Processing additional patterns...")
         # Process additional patterns
         if 'additional' in self.config:
             if isinstance(self.config['additional'], dict) and 'patterns' in self.config['additional']:
@@ -579,7 +608,7 @@ class TaxDocumentChecker:
                                     'end_date': item.get('end_date')
                                 })
 
-        print("Finished flattening config")
+        self.logger.info("Finished flattening config")
         return patterns
 
     def get_year_from_path(self, path):
@@ -590,9 +619,9 @@ class TaxDocumentChecker:
     def find_files_matching_pattern(self, pattern, year=None, category=None):
         """Find all files matching a pattern for a specific year in relevant directories."""
         if self.verbose:
-            print(f"    Searching for pattern: {pattern}")
-            print(f"    Year: {year}")
-            print(f"    Category: {category}")
+            self.logger.debug(f"    Searching for pattern: {pattern}")
+            self.logger.debug(f"    Year: {year}")
+            self.logger.debug(f"    Category: {category}")
         
         matches = []
         
@@ -600,7 +629,7 @@ class TaxDocumentChecker:
         search_dirs = self.directory_mapping.get(category, [])
         
         if self.verbose:
-            print(f"    Search directories: {search_dirs}")
+            self.logger.debug(f"    Search directories: {search_dirs}")
         
         # If no specific directories are mapped, search everywhere
         if not search_dirs:
@@ -611,12 +640,12 @@ class TaxDocumentChecker:
             search_path = self.base_path / search_dir
             
             if self.verbose:
-                print(f"    Searching in directory: {search_path}")
+                self.logger.debug(f"    Searching in directory: {search_path}")
             
             # Skip if directory doesn't exist
             if not search_path.exists():
                 if self.verbose:
-                    print(f"    Directory does not exist: {search_path}")
+                    self.logger.debug(f"    Directory does not exist: {search_path}")
                 continue
             
             # Use Path.glob to find all PDF files
@@ -625,48 +654,48 @@ class TaxDocumentChecker:
                     # Get the filename only for pattern matching
                     filename = file_path.name
                     if self.verbose:
-                        print(f"    Checking file: {filename}")
+                        self.logger.debug(f"    Checking file: {filename}")
                     
                     if re.search(pattern, filename):
                         file_year = self.get_year_from_path(file_path)
                         if year is None or file_year == year:
                             if self.verbose:
-                                print(f"    Match found: {file_path}")
+                                self.logger.debug(f"    Match found: {file_path}")
                             matches.append(str(file_path))
         
         # Sort matches alphabetically (effectively by date since filenames start with date)
         if self.verbose:
-            print(f"    Total matches found: {len(matches)}")
+            self.logger.debug(f"    Total matches found: {len(matches)}")
         
         return sorted(matches)
 
     def list_available_years(self):
         """List all available tax years in the base directory."""
         if self.verbose:
-            print("\nListing available tax years...")
-            print(f"Base path: {self.base_path}")
+            self.logger.info("\nListing available tax years...")
+            self.logger.info(f"Base path: {self.base_path}")
         
         years = set()
         
         # If a specific tax year path is provided, use that
         if self.tax_year_path:
             if self.verbose:
-                print(f"Using specific tax year path: {self.tax_year_path}")
+                self.logger.debug(f"Using specific tax year path: {self.tax_year_path}")
             try:
                 year_match = re.search(r'20\d{2}', str(self.tax_year_path))
                 if year_match:
                     years.add(year_match.group())
                     if self.verbose:
-                        print(f"Found year: {year_match.group()}")
+                        self.logger.debug(f"Found year: {year_match.group()}")
             except (ValueError, TypeError):
                 if self.verbose:
-                    print("Error parsing tax year path")
+                    self.logger.warning("Error parsing tax year path")
                 pass
             return sorted(list(years))
         
         # Otherwise, search all directories
         if self.verbose:
-            print("Searching all directories for tax years...")
+            self.logger.info("Searching all directories for tax years...")
         
         # Search in all mapped directories
         for category, dirs in self.directory_mapping.items():
@@ -683,24 +712,24 @@ class TaxDocumentChecker:
                                     year = year_match.group()
                                     years.add(year)
                                     if self.verbose:
-                                        print(f"Found year {year} in file: {file_path}")
+                                        self.logger.debug(f"Found year {year} in file: {file_path}")
                     except (PermissionError, OSError) as e:
-                        print(f"Error accessing directory {search_path}: {str(e)}")
+                        self.logger.error(f"Error accessing directory {search_path}: {str(e)}")
                         continue
                 else:
                     if self.verbose:
-                        print(f"Directory not found: {search_path}")
+                        self.logger.warning(f"Directory not found: {search_path}")
         
         if self.verbose:
-            print(f"Total years found: {len(years)}")
-            print(f"Years: {sorted(list(years))}")
+            self.logger.info(f"Total years found: {len(years)}")
+            self.logger.info(f"Years: {sorted(list(years))}")
         
         return sorted(list(years))
 
     def check_year(self, year):
         """Check documents for a specific tax year."""
-        print(f"\nChecking documents for tax year {year}")
-        print("=" * 50 + "\n")
+        self.logger.info(f"\nChecking documents for tax year {year}")
+        self.logger.info("=" * 50 + "\n")
         
         # Initialize results dictionary with all categories from required_patterns
         results = {category: [] for category in self.required_patterns.keys()}
@@ -710,7 +739,7 @@ class TaxDocumentChecker:
         # Process each category
         for category, patterns in self.required_patterns.items():
             if patterns:
-                print(f"\n{category.upper()}:")
+                self.logger.info(f"\n{category.upper()}:")
                 for pattern_info in patterns:
                     pattern = pattern_info['pattern']
                     name = pattern_info['name']
@@ -726,11 +755,11 @@ class TaxDocumentChecker:
                         
                         # Skip if completely outside date range
                         if end_date < calendar_year_start or start_date > calendar_year_end:
-                            print(f"⏭️ Skipping {name} ({frequency}) - not active in {year} (active from {start_date.year} to {end_date.year})")
+                            self.logger.info(f"⏭️ Skipping {name} ({frequency}) - not active in {year} (active from {start_date.year} to {end_date.year})")
                             continue
                     except (ValueError, TypeError):
                         if self.verbose:
-                            print(f"  Warning: Could not parse dates, proceeding with check")
+                            self.logger.warning(f"  Warning: Could not parse dates, proceeding with check")
                     
                     # Find matching files
                     matches = self.find_files_matching_pattern(pattern, year, category)
@@ -738,15 +767,18 @@ class TaxDocumentChecker:
                     # Add files to results if found
                     if matches:
                         results[category].extend(matches)
+                    else:
+                        self.logger.warning(f"✗ No files found for {name} ({frequency})")
+                        self.logger.warning(f"  Pattern used: {pattern}")
                     
                     # Validate frequency
                     is_valid, found_count, expected_count = self.validate_frequency(matches, frequency, year, pattern_info)
                     
                     if found_count > 0:
                         if is_valid:
-                            print(f"✓ Found {found_count} files for {name} ({frequency})")
+                            self.logger.info(f"✓ Found {found_count} files for {name} ({frequency})")
                         else:
-                            print(f"✗ Found {found_count} files for {name} ({frequency}), expected {expected_count}")
+                            self.logger.warning(f"✗ Found {found_count} files for {name} ({frequency}), expected {expected_count}")
                             # For bank accounts, only add the bank name without account type
                             if category.startswith('bank_'):
                                 bank_name = name.split(' - ')[0]  # Get the bank name before the account type
@@ -757,7 +789,7 @@ class TaxDocumentChecker:
                     else:
                         # Only add to missing documents if we're not skipping due to date range
                         if not (pattern_info.get('start_date') and pattern_info.get('end_date')):
-                            print(f"✗ No files found for {name} ({frequency})")
+                            self.logger.warning(f"✗ No files found for {name} ({frequency})")
                             # For bank accounts, only add the bank name without account type
                             if category.startswith('bank_'):
                                 bank_name = name.split(' - ')[0]  # Get the bank name before the account type
@@ -768,13 +800,13 @@ class TaxDocumentChecker:
         
         # Print missing documents summary
         if missing_documents:
-            print("\nMISSING OR INCOMPLETE DOCUMENTS SUMMARY:")
-            print("=" * 50 + "\n")
+            self.logger.warning("\nMISSING OR INCOMPLETE DOCUMENTS SUMMARY:")
+            self.logger.warning("=" * 50 + "\n")
             for category, documents in missing_documents.items():
-                print(f"\n{category.upper()}:")
+                self.logger.warning(f"\n{category.upper()}:")
                 for doc in sorted(documents):  # Sort the documents for consistent output
-                    print(doc)
-                print()
+                    self.logger.warning(doc)
+                self.logger.warning("")  # Add empty line between categories
         
         return results
 
@@ -811,35 +843,45 @@ def main():
     parser.add_argument('--year', type=str, help='Specific year to check (e.g., 2023)')
     parser.add_argument('--update-dates', action='store_true', help='Update YAML with inferred dates')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
+    parser.add_argument('--log-level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], 
+                        default='INFO', help='Set the logging level')
     args = parser.parse_args()
+    
+    # Set up logging
+    log_level = getattr(logging, args.log_level)
+    logger = setup_logging(log_level)
+    
+    # If verbose is set, override the log level to DEBUG
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
     
     # Assuming the script is run from the parent directory of the tax folders
     base_path = os.path.dirname(os.path.abspath(__file__))
     checker = TaxDocumentChecker(base_path, verbose=args.verbose)
     
     if args.verbose:
-        print(f"Base path: {base_path}")
-        print(f"Config file: {checker.config_file}")
-        print(f"Private config file: {checker.private_config_file}")
-        print(f"Directory mapping file: {checker.directory_mapping_file}")
+        logger.debug(f"Base path: {base_path}")
+        logger.debug(f"Config file: {checker.config_file}")
+        logger.debug(f"Private config file: {checker.private_config_file}")
+        logger.debug(f"Directory mapping file: {checker.directory_mapping_file}")
     
     if args.update_dates:
         if args.verbose:
-            print("Updating YAML file with inferred dates...")
+            logger.info("Updating YAML file with inferred dates...")
         updated_config = checker.update_yaml_with_dates()
-        print("Updated YAML file with inferred dates")
+        logger.info("Updated YAML file with inferred dates")
         return
     
     if args.year:
         if args.verbose:
-            print(f"Checking documents for year {args.year}")
+            logger.info(f"Checking documents for year {args.year}")
         checker.check_year(args.year)
     else:
         available_years = checker.list_available_years()
-        print(f"Available tax years: {', '.join(available_years)}")
+        logger.info(f"Available tax years: {', '.join(available_years)}")
         
         if args.verbose:
-            print(f"Checking documents for all available years: {available_years}")
+            logger.info(f"Checking documents for all available years: {available_years}")
         
         for year in available_years:
             checker.check_year(year)

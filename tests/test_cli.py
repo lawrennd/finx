@@ -1,118 +1,165 @@
 import pytest
 from unittest.mock import patch, MagicMock
+from unittest import TestCase
 from tax_document_checker.cli import main
 import sys
+import logging
 
-def test_cli_with_year():
-    with patch('sys.argv', ['tax-document-checker', '--year', '2023']):
-        with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
-            mock_instance = MagicMock()
-            mock_checker.return_value = mock_instance
-            mock_instance.check_year.return_value = True
-            
-            assert main() == 0
-            mock_instance.check_year.assert_called_once_with('2023')
-
-def test_cli_with_update_dates():
-    with patch('sys.argv', ['tax-document-checker', '--update-dates']):
-        with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
-            mock_instance = MagicMock()
-            mock_checker.return_value = mock_instance
-            
-            assert main() == 0
-            mock_instance.update_yaml_with_dates.assert_called_once()
-
-def test_cli_with_base_path():
-    """Test CLI with base path without verbose flag."""
-    with patch('sys.argv', ['tax-document-checker', '--base-path', '/test/path']):
-        with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
-            mock_instance = MagicMock()
-            mock_checker.return_value = mock_instance
-            mock_instance.list_available_years.return_value = ['2023']
-            mock_instance.check_year.return_value = True
-            
-            assert main() == 0
-            mock_checker.assert_called_once_with('/test/path', verbose=False)
-
-def test_cli_with_base_path_verbose():
-    """Test CLI with base path and verbose flag."""
-    with patch('sys.argv', ['tax-document-checker', '--base-path', '/test/path', '--verbose']):
-        with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
-            mock_instance = MagicMock()
-            mock_checker.return_value = mock_instance
-            mock_instance.list_available_years.return_value = ['2023']
-            mock_instance.check_year.return_value = True
-            
-            assert main() == 0
-            mock_checker.assert_called_once_with('/test/path', verbose=True)
-
-def test_cli_with_failed_check():
-    with patch('sys.argv', ['tax-document-checker', '--year', '2023']):
-        with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
-            mock_instance = MagicMock()
-            mock_checker.return_value = mock_instance
-            mock_instance.check_year.return_value = False
-            
-            assert main() == 1
-
-def test_cli_with_no_years():
-    """Test CLI when no arguments are provided - should show help message."""
-    with patch('sys.argv', ['tax-document-checker']):
-        with patch('argparse.ArgumentParser.parse_args') as mock_args:
-            mock_args.side_effect = SystemExit(0)  # Simulate argparse's help behavior
-            with pytest.raises(SystemExit) as exc_info:
-                main()
-            assert exc_info.value.code == 0
-
-def test_cli_with_no_years_found():
-    """Test CLI when no tax years are found in the directory."""
-    with patch('sys.argv', ['tax-document-checker', '--base-path', '/empty/path']):
-        with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
-            mock_instance = MagicMock()
-            mock_checker.return_value = mock_instance
-            mock_instance.list_available_years.return_value = []
-            
-            with patch('builtins.print') as mock_print:
-                result = main()
+class TestCLI(TestCase):
+    def test_cli_with_year(self):
+        """Test CLI with specific year argument."""
+        with patch('sys.argv', ['tax-document-checker', '--year', '2023']):
+            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+                mock_instance = MagicMock()
+                mock_checker.return_value = mock_instance
+                mock_instance.check_year.return_value = True
                 
-                # Verify that the appropriate message was printed
-                mock_print.assert_any_call("No tax years found in the directory!")
-                
-                # Verify that the function returned 1 (error)
-                assert result == 1
+                with self.assertLogs(level='INFO') as log_capture:
+                    assert main() == 0
+                    
+                    # Verify log messages
+                    log_messages = [record.message for record in log_capture.records]
+                    assert any("Initializing TaxDocumentChecker" in msg for msg in log_messages)
+                    assert any("Checking documents for year 2023" in msg for msg in log_messages)
+                    
+                mock_instance.check_year.assert_called_once_with('2023')
 
-def test_cli_with_verbose_output():
-    """Test CLI with verbose output for various operations."""
-    with patch('sys.argv', ['tax-document-checker', '--verbose']):
-        with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
-            mock_instance = MagicMock()
-            mock_checker.return_value = mock_instance
-            mock_instance.list_available_years.return_value = ['2023']
-            mock_instance.check_year.return_value = True
-            
-            with patch('builtins.print') as mock_print:
-                assert main() == 0
+    def test_cli_with_update_dates(self):
+        """Test CLI with update-dates flag."""
+        with patch('sys.argv', ['tax-document-checker', '--update-dates']):
+            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+                mock_instance = MagicMock()
+                mock_checker.return_value = mock_instance
                 
-                # Verify verbose output
-                mock_print.assert_any_call("Initializing TaxDocumentChecker...")
-                mock_print.assert_any_call("Base path: .")
-                mock_print.assert_any_call("\nListing available tax years...")
-                mock_print.assert_any_call("Found 1 tax years: 2023")
-                mock_print.assert_any_call("\nChecking documents for all available years...")
-                mock_print.assert_any_call("\nProcessing year 2023...")
-                mock_print.assert_any_call("\nDocument check complete!")
+                with self.assertLogs(level='INFO') as log_capture:
+                    assert main() == 0
+                    
+                    # Verify log messages
+                    log_messages = [record.message for record in log_capture.records]
+                    assert any("Initializing TaxDocumentChecker" in msg for msg in log_messages)
+                    assert any("Updating YAML with inferred dates" in msg for msg in log_messages)
+                    assert any("YAML updated successfully!" in msg for msg in log_messages)
+                    
+                mock_instance.update_yaml_with_dates.assert_called_once()
 
-def test_cli_with_verbose_update_dates():
-    """Test CLI with verbose output for update dates operation."""
-    with patch('sys.argv', ['tax-document-checker', '--update-dates', '--verbose']):
-        with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
-            mock_instance = MagicMock()
-            mock_checker.return_value = mock_instance
-            
-            with patch('builtins.print') as mock_print:
-                assert main() == 0
+    def test_cli_with_base_path(self):
+        """Test CLI with base path without verbose flag."""
+        with patch('sys.argv', ['tax-document-checker', '--base-path', '/test/path']):
+            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+                mock_instance = MagicMock()
+                mock_checker.return_value = mock_instance
+                mock_instance.list_available_years.return_value = ['2023']
+                mock_instance.check_year.return_value = True
                 
-                # Verify verbose output
-                mock_print.assert_any_call("Initializing TaxDocumentChecker...")
-                mock_print.assert_any_call("\nUpdating YAML with inferred dates...")
-                mock_print.assert_any_call("YAML updated successfully!") 
+                with self.assertLogs(level='INFO') as log_capture:
+                    assert main() == 0
+                    
+                    # Verify log messages
+                    log_messages = [record.message for record in log_capture.records]
+                    assert any("Initializing TaxDocumentChecker" in msg for msg in log_messages)
+                    assert any("Listing available tax years" in msg for msg in log_messages)
+                    assert any("Found 1 tax years: 2023" in msg for msg in log_messages)
+                    
+                mock_checker.assert_called_once_with('/test/path', verbose=False)
+
+    def test_cli_with_base_path_verbose(self):
+        """Test CLI with base path and verbose flag."""
+        with patch('sys.argv', ['tax-document-checker', '--base-path', '/test/path', '--verbose']):
+            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+                mock_instance = MagicMock()
+                mock_checker.return_value = mock_instance
+                mock_instance.list_available_years.return_value = ['2023']
+                mock_instance.check_year.return_value = True
+                
+                with self.assertLogs(level='DEBUG') as log_capture:
+                    assert main() == 0
+                    
+                    # Verify log messages
+                    log_messages = [record.message for record in log_capture.records]
+                    assert any("Initializing TaxDocumentChecker" in msg for msg in log_messages)
+                    assert any("Base path: /test/path" in msg for msg in log_messages)
+                    assert any("Listing available tax years" in msg for msg in log_messages)
+                    assert any("Found 1 tax years: 2023" in msg for msg in log_messages)
+                    
+                mock_checker.assert_called_once_with('/test/path', verbose=True)
+
+    def test_cli_with_failed_check(self):
+        """Test CLI with failed document check."""
+        with patch('sys.argv', ['tax-document-checker', '--year', '2023']):
+            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+                mock_instance = MagicMock()
+                mock_checker.return_value = mock_instance
+                mock_instance.check_year.return_value = False
+                
+                with self.assertLogs(level='INFO') as log_capture:
+                    assert main() == 1
+                    
+                    # Verify log messages
+                    log_messages = [record.message for record in log_capture.records]
+                    assert any("Initializing TaxDocumentChecker" in msg for msg in log_messages)
+                    assert any("Checking documents for year 2023" in msg for msg in log_messages)
+
+    def test_cli_with_no_years(self):
+        """Test CLI when no arguments are provided - should show help message."""
+        with patch('sys.argv', ['tax-document-checker']):
+            with patch('argparse.ArgumentParser.parse_args') as mock_args:
+                mock_args.side_effect = SystemExit(0)  # Simulate argparse's help behavior
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
+                assert exc_info.value.code == 0
+
+    def test_cli_with_no_years_found(self):
+        """Test CLI when no tax years are found in the directory."""
+        with patch('sys.argv', ['tax-document-checker', '--base-path', '/empty/path']):
+            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+                mock_instance = MagicMock()
+                mock_checker.return_value = mock_instance
+                mock_instance.list_available_years.return_value = []
+                
+                with self.assertLogs(level='ERROR') as log_capture:
+                    result = main()
+                    
+                    # Verify that the appropriate message was logged
+                    assert any("No tax years found in the directory!" in record.message 
+                             for record in log_capture.records)
+                    
+                    # Verify that the function returned 1 (error)
+                    assert result == 1
+
+    def test_cli_with_verbose_output(self):
+        """Test CLI with verbose output for various operations."""
+        with patch('sys.argv', ['tax-document-checker', '--verbose']):
+            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+                mock_instance = MagicMock()
+                mock_checker.return_value = mock_instance
+                mock_instance.list_available_years.return_value = ['2023']
+                mock_instance.check_year.return_value = True
+                
+                with self.assertLogs(level='DEBUG') as log_capture:
+                    assert main() == 0
+                    
+                    # Verify verbose output
+                    log_messages = [record.message for record in log_capture.records]
+                    assert any("Initializing TaxDocumentChecker" in msg for msg in log_messages)
+                    assert any("Base path: ." in msg for msg in log_messages)
+                    assert any("Listing available tax years" in msg for msg in log_messages)
+                    assert any("Found 1 tax years: 2023" in msg for msg in log_messages)
+                    assert any("Checking documents for all available years" in msg for msg in log_messages)
+                    assert any("Processing year 2023" in msg for msg in log_messages)
+                    assert any("Document check complete!" in msg for msg in log_messages)
+
+    def test_cli_with_verbose_update_dates(self):
+        """Test CLI with verbose output for update dates operation."""
+        with patch('sys.argv', ['tax-document-checker', '--update-dates', '--verbose']):
+            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+                mock_instance = MagicMock()
+                mock_checker.return_value = mock_instance
+                
+                with self.assertLogs(level='DEBUG') as log_capture:
+                    assert main() == 0
+                    
+                    # Verify verbose output
+                    log_messages = [record.message for record in log_capture.records]
+                    assert any("Initializing TaxDocumentChecker" in msg for msg in log_messages)
+                    assert any("Updating YAML with inferred dates" in msg for msg in log_messages)
+                    assert any("YAML updated successfully!" in msg for msg in log_messages) 
