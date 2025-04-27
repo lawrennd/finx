@@ -267,27 +267,55 @@ class TaxDocumentChecker:
         
         # Count files for the specific year
         year_files = [f for f in matches if str(year) in f]
+        
+        # If this is a regular statement (monthly/quarterly) and we have an annual_document_type,
+        # exclude the annual summary from the count
+        if frequency in ['monthly', 'quarterly'] and pattern_info and 'annual_document_type' in pattern_info:
+            annual_type = pattern_info['annual_document_type'].lower()
+            year_files = [f for f in year_files if annual_type not in os.path.basename(f).lower()]
+        
         expected_count = FREQUENCY_EXPECTATIONS.get(frequency, 1)
         
         # For unknown frequencies, we expect at least one file
         if frequency not in FREQUENCY_EXPECTATIONS:
             return len(year_files) >= 1, len(year_files), 1
         
+        # Calculate expected count based on date range if available
+        if pattern_info and frequency in ['monthly', 'quarterly']:
+            try:
+                year_start = datetime(int(year), 1, 1)
+                year_end = datetime(int(year), 12, 31)
+                
+                # Get pattern start and end dates
+                start_date = datetime.strptime(pattern_info.get('start_date', '1900-01-01'), '%Y-%m-%d')
+                end_date = datetime.strptime(pattern_info.get('end_date', '9999-12-31'), '%Y-%m-%d')
+                
+                # Adjust dates to be within the year
+                effective_start = max(year_start, start_date)
+                effective_end = min(year_end, end_date)
+                
+                # Calculate number of months in the period
+                if frequency == 'monthly':
+                    months = (effective_end.year - effective_start.year) * 12 + effective_end.month - effective_start.month + 1
+                    expected_count = max(0, months)
+                elif frequency == 'quarterly':
+                    months = (effective_end.year - effective_start.year) * 12 + effective_end.month - effective_start.month + 1
+                    expected_count = max(0, (months + 2) // 3)  # Round up to nearest quarter
+            except (ValueError, TypeError):
+                # If there's any error parsing dates, fall back to default expectations
+                pass
+        
         return len(year_files) == expected_count, len(year_files), expected_count
 
     def check_annual_documents(self, matches, year, annual_document_type):
-        """Check for both regular documents and annual summary documents."""
+        """Check for annual summary documents."""
         if not matches:
-            return False, 0, 2  # Expect 2 forms: regular and annual summary
+            return False, 0, 1  # Expect 1 annual summary
         
-        # Count files for the specific year
-        year_files = [f for f in matches if str(year) in f]
+        # Count files for the specific year that contain the annual_document_type
+        year_files = [f for f in matches if str(year) in f and annual_document_type.lower() in os.path.basename(f).lower()]
         
-        # Check for both regular form and annual summary form
-        has_regular = any(annual_document_type.lower() not in os.path.basename(f).lower() for f in year_files)
-        has_annual = any(annual_document_type.lower() in os.path.basename(f).lower() for f in year_files)
-        
-        return has_regular and has_annual, len(year_files), 2
+        return len(year_files) == 1, len(year_files), 1
 
     def update_yaml_with_dates(self):
         """Update the YAML configuration with inferred dates."""
@@ -727,14 +755,16 @@ class TaxDocumentChecker:
                                 missing_documents[category].add(f"- {name} ({frequency})")
                             all_found = False
                     else:
-                        print(f"✗ No files found for {name} ({frequency})")
-                        # For bank accounts, only add the bank name without account type
-                        if category.startswith('bank_'):
-                            bank_name = name.split(' - ')[0]  # Get the bank name before the account type
-                            missing_documents[category].add(f"- {bank_name} ({frequency})")
-                        else:
-                            missing_documents[category].add(f"- {name} ({frequency})")
-                        all_found = False
+                        # Only add to missing documents if we're not skipping due to date range
+                        if not (pattern_info.get('start_date') and pattern_info.get('end_date')):
+                            print(f"✗ No files found for {name} ({frequency})")
+                            # For bank accounts, only add the bank name without account type
+                            if category.startswith('bank_'):
+                                bank_name = name.split(' - ')[0]  # Get the bank name before the account type
+                                missing_documents[category].add(f"- {bank_name} ({frequency})")
+                            else:
+                                missing_documents[category].add(f"- {name} ({frequency})")
+                            all_found = False
         
         # Print missing documents summary
         if missing_documents:

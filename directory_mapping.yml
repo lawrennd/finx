@@ -10,6 +10,7 @@ directory_mapping:
     - investments/uk
   bank_uk: 
     - banking/uk
+    - UK-savings
   bank_us: 
     - banking/us
   additional: 

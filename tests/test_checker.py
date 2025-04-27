@@ -142,6 +142,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
 
     def test_check_annual_documents(self):
         """Test checking annual documents."""
+        # Test case 1: One regular statement and one annual summary
         matches = [
             '/test/2023-01-01_regular.pdf',
             '/test/2023-12-31_annual.pdf'
@@ -150,8 +151,32 @@ class TestTaxDocumentChecker(unittest.TestCase):
             matches, '2023', 'annual'
         )
         assert found is True
-        assert count == 2
-        assert expected == 2
+        assert count == 1  # Should only count the annual document
+        assert expected == 1
+
+        # Test case 2: Only regular statements, no annual summary
+        matches = [
+            '/test/2023-01-01_regular.pdf',
+            '/test/2023-02-01_regular.pdf'
+        ]
+        found, count, expected = self.checker.check_annual_documents(
+            matches, '2023', 'annual'
+        )
+        assert found is False
+        assert count == 0  # Should not count regular statements
+        assert expected == 1
+
+        # Test case 3: Multiple annual summaries (which should not happen)
+        matches = [
+            '/test/2023-12-31_annual.pdf',
+            '/test/2023-12-31_annual_duplicate.pdf'
+        ]
+        found, count, expected = self.checker.check_annual_documents(
+            matches, '2023', 'annual'
+        )
+        assert found is False
+        assert count == 2  # Found too many annual documents
+        assert expected == 1
 
     def test_update_yaml_with_dates(self):
         """Test updating YAML with dates."""
@@ -1391,6 +1416,75 @@ class TestTaxDocumentChecker(unittest.TestCase):
         assert '⏭️ Skipping old-job (monthly) - not active in 2023 (active from 2020 to 2021)' in output_str  # Old job should be skipped with date range message
         assert 'MISSING OR INCOMPLETE DOCUMENTS SUMMARY' in output_str
         assert 'current-job (monthly)' in output_str  # Should be listed in missing documents
+
+    def test_validate_frequency_with_partial_year(self):
+        """Test validating frequency for partial year employment."""
+        checker = TaxDocumentChecker('test_dir')
+        
+        # Test monthly frequency with employment ending in June
+        pattern_info = {
+            'start_date': '2023-01-01',
+            'end_date': '2023-06-30',
+            'frequency': 'monthly'
+        }
+        matches = [f'/test/2023-{month:02d}-01_company.pdf' for month in range(1, 7)]  # 6 months of files
+        is_valid, count, expected = checker.validate_frequency(matches, 'monthly', '2023', pattern_info)
+        assert is_valid
+        assert count == 6
+        assert expected == 6
+        
+        # Test quarterly frequency with employment starting in April
+        pattern_info = {
+            'start_date': '2023-04-01',
+            'end_date': '2023-12-31',
+            'frequency': 'quarterly'
+        }
+        matches = ['/test/2023-06-30_company.pdf', '/test/2023-09-30_company.pdf', '/test/2023-12-31_company.pdf']  # 3 quarters
+        is_valid, count, expected = checker.validate_frequency(matches, 'quarterly', '2023', pattern_info)
+        assert is_valid
+        assert count == 3
+        assert expected == 3
+        
+        # Test with employment ending mid-quarter (should round up to full quarter)
+        pattern_info = {
+            'start_date': '2023-01-01',
+            'end_date': '2023-08-15',  # Mid-quarter
+            'frequency': 'quarterly'
+        }
+        matches = ['/test/2023-03-31_company.pdf', '/test/2023-06-30_company.pdf', '/test/2023-08-15_company.pdf']
+        is_valid, count, expected = checker.validate_frequency(matches, 'quarterly', '2023', pattern_info)
+        assert is_valid
+        assert count == 3
+        assert expected == 3
+
+    def test_check_year_with_future_bank_account(self):
+        """Test checking a year with a bank account that starts in the future."""
+        # Set up test config with a bank account that starts in the future
+        self.checker.required_patterns = {
+            'bank_uk': [{
+                'pattern': r'\d{4}-\d{2}-\d{2}_future-bank\.pdf',
+                'name': 'Future Bank - Savings',
+                'frequency': 'monthly',
+                'start_date': '2024-01-01',  # Future date
+                'end_date': '2024-12-31'
+            }]
+        }
+        
+        # Mock find_files_matching_pattern to return no results (since account hasn't started)
+        with patch.object(self.checker, 'find_files_matching_pattern') as mock_find:
+            mock_find.return_value = []
+            
+            with patch('builtins.print') as mock_print:
+                result = self.checker.check_year('2023')
+                
+                # Verify that the files were skipped (empty result)
+                self.assertEqual(result['bank_uk'], [])
+                
+                # Verify that we got the skip message
+                mock_print.assert_any_call("⏭️ Skipping Future Bank - Savings (monthly) - not active in 2023 (active from 2024 to 2024)")
+                
+                # Verify that the account was not added to missing documents
+                self.assertNotIn("Future Bank (monthly)", str(mock_print.call_args_list))
 
 if __name__ == '__main__':
     unittest.main()
