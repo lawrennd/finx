@@ -7,6 +7,8 @@ import shutil
 from pathlib import Path
 import yaml
 from datetime import datetime
+from io import StringIO
+from contextlib import redirect_stdout
 
 # Add the parent directory to the path so we can import the script
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -1296,6 +1298,90 @@ class TestTaxDocumentChecker(unittest.TestCase):
                 # Verify that the method handled the invalid date gracefully
                 self.assertEqual(result['employment'], ['/test/2023-01-01_company.pdf'])
                 mock_print.assert_any_call('  Warning: Could not parse dates, proceeding with check')
+
+    def test_check_year_with_employment_dates(self):
+        """Test check_year with employment date ranges and verify summary output."""
+        # Create test config with employment date ranges
+        test_config = {
+            'employment': {
+                'current': [
+                    {
+                        'name': 'current-job',
+                        'patterns': [r'\d{4}-\d{2}-\d{2}_current-job\.pdf$'],
+                        'frequency': 'monthly',
+                        'start_date': '2022-01-01',
+                        'end_date': '2023-12-31'
+                    }
+                ],
+                'previous': [
+                    {
+                        'name': 'old-job',
+                        'patterns': [r'\d{4}-\d{2}-\d{2}_old-job\.pdf$'],
+                        'frequency': 'monthly',
+                        'start_date': '2020-01-01',
+                        'end_date': '2021-12-31'
+                    }
+                ]
+            },
+            'investment': {
+                'uk': [
+                    {
+                        'name': 'investment-statement',
+                        'patterns': [r'\d{4}-\d{2}-\d{2}_investment\.pdf$'],
+                        'frequency': 'quarterly'
+                    }
+                ]
+            }
+        }
+    
+        # Create test directory structure
+        base_dir = Path(self.temp_dir)
+        employment_dir = base_dir / 'employment'
+        investment_dir = base_dir / 'investments'
+        employment_dir.mkdir()
+        investment_dir.mkdir()
+    
+        # Create test files
+        (employment_dir / '2023-01-01_current-job.pdf').touch()
+        (employment_dir / '2023-02-01_current-job.pdf').touch()
+        (employment_dir / '2021-01-01_old-job.pdf').touch()  # Old job file, should be skipped for 2023
+        (investment_dir / '2023-03-01_investment.pdf').touch()
+    
+        # Create directory mapping
+        dir_mapping = {
+            'employment': ['employment'],
+            'investment_uk': ['investments']
+        }
+    
+        # Save configs
+        config_path = base_dir / 'tax_document_patterns_base.yml'
+        dir_mapping_path = base_dir / 'directory_mapping.yml'
+        with open(config_path, 'w') as f:
+            yaml.dump(test_config, f)
+        with open(dir_mapping_path, 'w') as f:
+            yaml.dump(dir_mapping, f)
+    
+        # Initialize checker with test configs
+        checker = TaxDocumentChecker(
+            base_path=base_dir,
+            config_file=config_path,
+            directory_mapping_file=dir_mapping_path,
+            verbose=True
+        )
+    
+        # Capture output
+        output = StringIO()
+        with redirect_stdout(output):
+            checker.check_year('2023')
+        
+        output_str = output.getvalue()
+        
+        # Verify results
+        assert 'Found 2 files for current-job' in output_str
+        assert 'Found 1 files for investment-statement' in output_str
+        assert 'No files found for old-job' in output_str  # Old job should be skipped
+        assert 'MISSING OR INCOMPLETE DOCUMENTS SUMMARY' in output_str
+        assert 'old-job (monthly)' in output_str  # Should be listed in missing documents
 
 if __name__ == '__main__':
     unittest.main()
