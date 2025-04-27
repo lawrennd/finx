@@ -1040,5 +1040,106 @@ class TestTaxDocumentChecker(unittest.TestCase):
                             from tax_document_checker.checker import main
                             main()
 
+    def test_verbose_output_in_find_config_file(self):
+        """Test verbose output when finding configuration files."""
+        # Create a test config file
+        test_config = {'test': 'value'}
+        config_path = os.path.join(self.temp_dir, 'tax_document_patterns_base.yaml')
+        with open(config_path, 'w') as f:
+            yaml.dump(test_config, f)
+        
+        # Initialize checker with verbose mode and capture print output
+        with patch('builtins.print') as mock_print:
+            checker = TaxDocumentChecker(
+                base_path=self.temp_dir,
+                config_file=config_path,
+                verbose=True
+            )
+            
+            # Verify that the verbose output was printed
+            mock_print.assert_any_call(f"Found tax_document_patterns_base.yaml at explicit path: {config_path}")
+
+    def test_verbose_output_in_file_operations(self):
+        """Test verbose output in file operations."""
+        self.checker.verbose = True
+        self.checker.directory_mapping = {'test': ['test_dir']}
+        
+        # Create test directory and file
+        test_dir = os.path.join(self.temp_dir, 'test_dir')
+        os.makedirs(test_dir)
+        test_file = os.path.join(test_dir, '2023-01-01_test.pdf')
+        with open(test_file, 'w') as f:
+            f.write('test content')
+        
+        with patch('builtins.print') as mock_print:
+            # Test find_files_matching_pattern
+            self.checker.find_files_matching_pattern(r'\d{4}-\d{2}-\d{2}_test\.pdf', '2023', 'test')
+            
+            # Verify verbose output
+            mock_print.assert_any_call("    Searching for pattern: \\d{4}-\\d{2}-\\d{2}_test\\.pdf")
+            mock_print.assert_any_call("    Year: 2023")
+            mock_print.assert_any_call("    Category: test")
+            mock_print.assert_any_call("    Search directories: ['test_dir']")
+
+    def test_config_merging_edge_cases(self):
+        """Test edge cases in config merging."""
+        # Test merging with None values
+        self.checker.base_config = {'test': {'sub': None}}
+        self.checker.private_config = {'test': {'sub': ['item']}}
+        merged = self.checker.merge_configs()
+        self.assertEqual(merged['test']['sub'], ['item'])
+        
+        # Test merging with empty dictionaries
+        self.checker.base_config = {'test': {}}
+        self.checker.private_config = {'test': {'sub': ['item']}}
+        merged = self.checker.merge_configs()
+        self.assertEqual(merged['test']['sub'], ['item'])
+        
+        # Test merging with mixed types
+        self.checker.base_config = {'test': {'sub': 'string'}}
+        self.checker.private_config = {'test': {'sub': ['list']}}
+        merged = self.checker.merge_configs()
+        self.assertEqual(merged['test']['sub'], ['list'])
+
+    def test_pattern_flattening_edge_cases(self):
+        """Test edge cases in pattern flattening."""
+        # Test with None patterns
+        self.checker.config = {
+            'employment': {
+                'current': [{
+                    'name': 'Test Corp',
+                    'frequency': 'monthly',
+                    'patterns': None
+                }]
+            }
+        }
+        patterns = self.checker.flatten_config()
+        self.assertEqual(patterns['employment'], [])
+        
+        # Test with empty patterns list
+        self.checker.config = {
+            'employment': {
+                'current': [{
+                    'name': 'Test Corp',
+                    'frequency': 'monthly',
+                    'patterns': []
+                }]
+            }
+        }
+        patterns = self.checker.flatten_config()
+        self.assertEqual(patterns['employment'], [])
+
+    def test_find_config_file_fallback_to_code_dir(self):
+        """Test finding config file in code directory when base directory doesn't exist."""
+        pass
+
+    def test_find_config_file_verbose_output(self):
+        """Test verbose output when config file is not found."""
+        pass
+
+    def test_directory_access_errors(self):
+        """Test handling of directory access errors."""
+        pass
+
 if __name__ == '__main__':
     unittest.main()

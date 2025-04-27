@@ -85,3 +85,39 @@ def test_cli_with_no_years_found():
                     
                     # Verify that the function returned 1 (error)
                     assert result == 1 
+
+def test_cli_with_verbose_output():
+    """Test CLI with verbose output for various operations."""
+    with patch('sys.argv', ['tax-document-checker', '--verbose']):
+        with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+            mock_instance = MagicMock()
+            mock_checker.return_value = mock_instance
+            mock_instance.list_available_years.return_value = ['2023']
+            mock_instance.check_year.return_value = True
+            
+            with patch('builtins.print') as mock_print:
+                assert main() == 0
+                
+                # Verify verbose output
+                mock_print.assert_any_call("Initializing TaxDocumentChecker...")
+                mock_print.assert_any_call("Base path: .")
+                mock_print.assert_any_call("\nListing available tax years...")
+                mock_print.assert_any_call("Found 1 tax years: 2023")
+                mock_print.assert_any_call("\nChecking documents for all available years...")
+                mock_print.assert_any_call("\nProcessing year 2023...")
+                mock_print.assert_any_call("\nDocument check complete!")
+
+def test_cli_with_verbose_update_dates():
+    """Test CLI with verbose output for update dates operation."""
+    with patch('sys.argv', ['tax-document-checker', '--update-dates', '--verbose']):
+        with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+            mock_instance = MagicMock()
+            mock_checker.return_value = mock_instance
+            
+            with patch('builtins.print') as mock_print:
+                assert main() == 0
+                
+                # Verify verbose output
+                mock_print.assert_any_call("Initializing TaxDocumentChecker...")
+                mock_print.assert_any_call("\nUpdating YAML with inferred dates...")
+                mock_print.assert_any_call("YAML updated successfully!") 

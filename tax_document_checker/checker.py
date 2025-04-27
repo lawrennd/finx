@@ -66,11 +66,11 @@ class TaxDocumentChecker:
             code_path = Path(__file__).parent.parent / filename
             if code_path.exists():
                 if self.verbose:
-                    print(f"Found {filename} in code directory: {code_path}")
+                    print(f"Found {filename} in code directory")
                 return str(code_path)
             
             if self.verbose:
-                print(f"Could not find {filename} in any location")
+                print(f"Could not find {filename}")
             return explicit_path  # Return explicit path even if not found, for error messaging
         
         # Find config files in order of precedence
@@ -553,8 +553,7 @@ class TaxDocumentChecker:
                                     if self.verbose:
                                         print(f"Found year {year} in file: {file_path}")
                     except (PermissionError, OSError) as e:
-                        if self.verbose:
-                            print(f"Error accessing directory {search_path}: {e}")
+                        print(f"Error accessing directory {search_path}: {str(e)}")
                         continue
                 else:
                     if self.verbose:
