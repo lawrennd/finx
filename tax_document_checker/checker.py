@@ -49,7 +49,7 @@ FREQUENCY_EXPECTATIONS = {
 }
 
 class TaxDocumentChecker:
-    def __init__(self, base_path, tax_year_path=None, config_file=None, private_config_file=None, directory_mapping_file=None, verbose=False):
+    def __init__(self, base_path=None, tax_year_path=None, config_file=None, private_config_file=None, directory_mapping_file=None, verbose=False, config=None):
         """Initialize the tax document checker.
         
         Args:
@@ -59,9 +59,10 @@ class TaxDocumentChecker:
             private_config_file: Path to the private configuration file
             directory_mapping_file: Path to the directory mapping configuration file
             verbose: Whether to print verbose output
+            config: Optional direct configuration dictionary to use instead of loading from files
         """
         self.logger = logging.getLogger('TaxDocumentChecker')
-        self.base_path = Path(base_path)
+        self.base_path = Path(base_path) if base_path else None
         self.tax_year_path = Path(tax_year_path) if tax_year_path else None
         self.verbose = verbose
         
@@ -69,53 +70,61 @@ class TaxDocumentChecker:
             self.logger.setLevel(logging.DEBUG)
             self.logger.debug(f"Initializing TaxDocumentChecker with base_path: {self.base_path}")
         
-        # Search for config files in multiple locations
-        def find_config_file(filename, explicit_path=None):
-            if explicit_path and os.path.exists(explicit_path):
+        # If direct config is provided, use it instead of loading from files
+        if config is not None:
+            self.base_config = {}
+            self.private_config = {}
+            self.config = config
+            self.directory_mapping = {}
+        else:
+            # Search for config files in multiple locations
+            def find_config_file(filename, explicit_path=None):
+                if explicit_path and os.path.exists(explicit_path):
+                    if self.verbose:
+                        self.logger.debug(f"Found {filename} at explicit path: {explicit_path}")
+                    return explicit_path
+                
+                # Try current working directory
+                cwd_path = Path.cwd() / filename
+                if cwd_path.exists():
+                    if self.verbose:
+                        self.logger.debug(f"Found {filename} in current working directory: {cwd_path}")
+                    return str(cwd_path)
+                
+                # Try base directory
+                if self.base_path:
+                    base_dir_path = self.base_path / filename
+                    if base_dir_path.exists():
+                        if self.verbose:
+                            self.logger.debug(f"Found {filename} in base directory: {base_dir_path}")
+                        return str(base_dir_path)
+                
+                # Try code directory as fallback
+                code_path = Path(__file__).parent.parent / filename
+                if code_path.exists():
+                    if self.verbose:
+                        self.logger.debug(f"Found {filename} in code directory")
+                    return str(code_path)
+                
                 if self.verbose:
-                    self.logger.debug(f"Found {filename} at explicit path: {explicit_path}")
-                return explicit_path
+                    self.logger.warning(f"Could not find {filename}")
+                
+                # Return a default path in the base directory if no file is found
+                default_path = self.base_path / filename if self.base_path else Path(filename)
+                return str(default_path)
             
-            # Try current working directory
-            cwd_path = Path.cwd() / filename
-            if cwd_path.exists():
-                if self.verbose:
-                    self.logger.debug(f"Found {filename} in current working directory: {cwd_path}")
-                return str(cwd_path)
-            
-            # Try base directory
-            base_dir_path = self.base_path / filename
-            if base_dir_path.exists():
-                if self.verbose:
-                    self.logger.debug(f"Found {filename} in base directory: {base_dir_path}")
-                return str(base_dir_path)
-            
-            # Try code directory as fallback
-            code_path = Path(__file__).parent.parent / filename
-            if code_path.exists():
-                if self.verbose:
-                    self.logger.debug(f"Found {filename} in code directory")
-                return str(code_path)
+            # Find config files in order of precedence
+            self.config_file = find_config_file('tax_document_patterns_base.yml', config_file)
+            self.private_config_file = find_config_file('tax_document_patterns_private.yml', private_config_file)
+            self.directory_mapping_file = find_config_file('directory_mapping.yml', directory_mapping_file)
             
             if self.verbose:
-                self.logger.warning(f"Could not find {filename}")
+                self.logger.info("\nLoading configurations...")
             
-            # Return a default path in the base directory if no file is found
-            default_path = self.base_path / filename
-            return str(default_path)
-        
-        # Find config files in order of precedence
-        self.config_file = find_config_file('tax_document_patterns_base.yml', config_file)
-        self.private_config_file = find_config_file('tax_document_patterns_private.yml', private_config_file)
-        self.directory_mapping_file = find_config_file('directory_mapping.yml', directory_mapping_file)
-        
-        if self.verbose:
-            self.logger.info("\nLoading configurations...")
-        
-        self.base_config = self.load_base_config()
-        self.private_config = self.load_private_config()
-        self.directory_mapping = self.load_directory_mapping()
-        self.config = self.merge_configs()
+            self.base_config = self.load_base_config()
+            self.private_config = self.load_private_config()
+            self.directory_mapping = self.load_directory_mapping()
+            self.config = self.merge_configs()
         
         # Initialize account_dates before flattening config
         self.account_dates = {}
@@ -441,29 +450,42 @@ class TaxDocumentChecker:
         self.logger.info("Processing employment patterns...")
         # Process employment patterns
         if 'employment' in self.config:
-            # Process all employment records regardless of category
-            for category in self.config['employment']:
-                self.logger.info(f"Processing employment category: {category}")
-                for employer in self.config['employment'][category]:
-                    if 'patterns' in employer and employer['patterns']:
-                        for pattern in employer['patterns']:
-                            if pattern is not None:
-                                if isinstance(pattern, dict):
-                                    full_pattern = self.build_pattern(
-                                        pattern.get('base', ''),
-                                        suffix=pattern.get('suffix'),
-                                        identifiers=pattern.get('identifiers')
-                                    )
-                                else:
-                                    full_pattern = pattern
-                                
-                                patterns['employment'].append({
-                                    'pattern': full_pattern,
-                                    'name': employer['name'],
-                                    'frequency': employer['frequency'],
-                                    'start_date': employer.get('start_date'),
-                                    'end_date': employer.get('end_date')
-                                })
+            # Handle both list and dictionary formats for employment
+            if isinstance(self.config['employment'], list):
+                # Direct list of employment records
+                for employer in self.config['employment']:
+                    if 'pattern' in employer:
+                        patterns['employment'].append({
+                            'pattern': employer['pattern'],
+                            'name': employer['name'],
+                            'frequency': employer.get('frequency', 'monthly'),
+                            'start_date': employer.get('start_date'),
+                            'end_date': employer.get('end_date')
+                        })
+            else:
+                # Dictionary format with categories
+                for category in self.config['employment']:
+                    self.logger.info(f"Processing employment category: {category}")
+                    for employer in self.config['employment'][category]:
+                        if 'patterns' in employer and employer['patterns']:
+                            for pattern in employer['patterns']:
+                                if pattern is not None:
+                                    if isinstance(pattern, dict):
+                                        full_pattern = self.build_pattern(
+                                            pattern.get('base', ''),
+                                            suffix=pattern.get('suffix'),
+                                            identifiers=pattern.get('identifiers')
+                                        )
+                                    else:
+                                        full_pattern = pattern
+                                    
+                                    patterns['employment'].append({
+                                        'pattern': full_pattern,
+                                        'name': employer['name'],
+                                        'frequency': employer['frequency'],
+                                        'start_date': employer.get('start_date'),
+                                        'end_date': employer.get('end_date')
+                                    })
 
         self.logger.info("Processing investment patterns...")
         # Process investment patterns
@@ -727,13 +749,21 @@ class TaxDocumentChecker:
         return sorted(list(years))
 
     def check_year(self, year):
-        """Check documents for a specific tax year."""
+        """Check documents for a specific tax year.
+        
+        Returns:
+            dict: A dictionary containing:
+                - Category-to-files mappings
+                - 'all_found': A boolean indicating whether all required documents were found
+        """
         self.logger.info(f"\nChecking documents for tax year {year}")
         self.logger.info("=" * 50 + "\n")
         
         # Initialize results dictionary with all categories from required_patterns
-        results = {category: [] for category in self.required_patterns.keys()}
-        all_found = True
+        results = {
+            category: [] for category in self.required_patterns.keys()
+        }
+        results['all_found'] = True
         missing_documents = defaultdict(set)  # Changed to set to avoid duplicates
         
         # Process each category
@@ -770,6 +800,14 @@ class TaxDocumentChecker:
                     else:
                         self.logger.warning(f"✗ No files found for {name} ({frequency})")
                         self.logger.warning(f"  Pattern used: {pattern}")
+                        # Add to missing documents if no files are found
+                        if category.startswith('bank_'):
+                            bank_name = name.split(' - ')[0]  # Get the bank name before the account type
+                            missing_documents[category].add(f"- {bank_name} ({frequency})")
+                        else:
+                            missing_documents[category].add(f"- {name} ({frequency})")
+                        results['all_found'] = False
+                        continue
                     
                     # Validate frequency
                     is_valid, found_count, expected_count = self.validate_frequency(matches, frequency, year, pattern_info)
@@ -785,28 +823,19 @@ class TaxDocumentChecker:
                                 missing_documents[category].add(f"- {bank_name} ({frequency})")
                             else:
                                 missing_documents[category].add(f"- {name} ({frequency})")
-                            all_found = False
-                    else:
-                        # Only add to missing documents if we're not skipping due to date range
-                        if not (pattern_info.get('start_date') and pattern_info.get('end_date')):
-                            self.logger.warning(f"✗ No files found for {name} ({frequency})")
-                            # For bank accounts, only add the bank name without account type
-                            if category.startswith('bank_'):
-                                bank_name = name.split(' - ')[0]  # Get the bank name before the account type
-                                missing_documents[category].add(f"- {bank_name} ({frequency})")
-                            else:
-                                missing_documents[category].add(f"- {name} ({frequency})")
-                            all_found = False
+                            results['all_found'] = False
         
-        # Print missing documents summary
+        # Print summary of missing documents if any
         if missing_documents:
             self.logger.warning("\nMISSING OR INCOMPLETE DOCUMENTS SUMMARY:")
-            self.logger.warning("=" * 50 + "\n")
-            for category, documents in missing_documents.items():
+            self.logger.warning("=" * 50)
+            self.logger.warning("")
+            
+            for category in sorted(missing_documents.keys()):
                 self.logger.warning(f"\n{category.upper()}:")
-                for doc in sorted(documents):  # Sort the documents for consistent output
+                for doc in sorted(missing_documents[category]):
                     self.logger.warning(doc)
-                self.logger.warning("")  # Add empty line between categories
+                self.logger.warning("")
         
         return results
 
