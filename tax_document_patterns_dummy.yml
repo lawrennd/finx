@@ -1,0 +1,61 @@
+# Private tax document patterns
+# Contains account-specific information and private patterns
+# DO NOT COMMIT THIS FILE TO VERSION CONTROL
+
+employment:
+  current:
+    - name: "EXAMPLE_EMPLOYER"  # Replace with actual employer name
+      patterns:
+        - base: example-employer  # Replace with actual pattern
+      frequency: monthly
+      annual_document_type: P60
+      start_date: '2020-01-01'  # Replace with actual date
+      end_date: null  # null for current employment
+  previous:
+    - name: "PREVIOUS_EMPLOYER"  # Replace with actual employer name
+      patterns:
+        - base: previous-employer  # Replace with actual pattern
+      frequency: monthly
+      annual_document_type: P60
+      start_date: '2018-01-01'  # Replace with actual date
+      end_date: '2019-12-31'  # Replace with actual date
+
+investment:
+  us:
+    - name: "US_INVESTMENT_FIRM"  # Replace with actual firm name
+      patterns:
+        - base: us-investment  # Replace with actual pattern
+      frequency: yearly
+      annual_document_type: "1099"
+      start_date: '2020-01-01'  # Replace with actual date
+      end_date: null
+  uk:
+    - name: "UK_INVESTMENT_FIRM"  # Replace with actual firm name
+      patterns:
+        - base: uk-investment  # Replace with actual pattern
+      frequency: yearly
+      start_date: '2020-01-01'  # Replace with actual date
+      end_date: null
+
+bank:
+  uk:
+    - name: "UK_BANK"  # Replace with actual bank name
+      account_types:
+        - name: "SAVINGS"  # Replace with actual account type
+          patterns:
+            - base: uk-bank-savings  # Replace with actual pattern
+          frequency: monthly
+          start_date: '2020-01-01'  # Replace with actual date
+          end_date: null
+  us:
+    - name: "US_BANK"  # Replace with actual bank name
+      account_types:
+        - name: "CHECKING"  # Replace with actual account type
+          patterns:
+            - base: us-bank-checking  # Replace with actual pattern
+          frequency: monthly
+          start_date: '2020-01-01'  # Replace with actual date
+          end_date: null
+
+# Add a .gitignore entry to exclude this file
+# echo "tax_document_patterns_private.yaml" >> .gitignore 

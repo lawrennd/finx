@@ -71,12 +71,15 @@ class TaxDocumentChecker:
             
             if self.verbose:
                 print(f"Could not find {filename}")
-            return explicit_path  # Return explicit path even if not found, for error messaging
+            
+            # Return a default path in the base directory if no file is found
+            default_path = self.base_path / filename
+            return str(default_path)
         
         # Find config files in order of precedence
-        self.config_file = find_config_file('tax_document_patterns_base.yaml', config_file)
-        self.private_config_file = find_config_file('tax_document_patterns_private.yaml', private_config_file)
-        self.directory_mapping_file = find_config_file('directory_mapping.yaml', directory_mapping_file)
+        self.config_file = find_config_file('tax_document_patterns_base.yml', config_file)
+        self.private_config_file = find_config_file('tax_document_patterns_private.yml', private_config_file)
+        self.directory_mapping_file = find_config_file('directory_mapping.yml', directory_mapping_file)
         
         if self.verbose:
             print("\nLoading configurations...")
@@ -132,6 +135,11 @@ class TaxDocumentChecker:
 
     def load_directory_mapping(self):
         """Load directory mapping from YAML file."""
+        if not self.directory_mapping_file:
+            if self.verbose:
+                print("No directory mapping file specified")
+            return {}
+            
         try:
             with open(self.directory_mapping_file, 'r') as f:
                 try:
@@ -161,7 +169,7 @@ class TaxDocumentChecker:
                             merged[category].extend(self.private_config[category])
                         else:
                             merged[category] = self.private_config[category]
-                    # Handle categories that are dictionaries (like additional patterns)
+                    # Handle categories that are dictionaries (like investment and bank)
                     elif isinstance(self.private_config[category], dict):
                         if not isinstance(merged[category], dict):
                             merged[category] = {}
@@ -186,11 +194,25 @@ class TaxDocumentChecker:
                                 else:
                                     merged[category][key] = value
         
+        # Ensure investment and bank categories have proper structure
+        for category in ['investment', 'bank']:
+            if category in merged:
+                for region in ['uk', 'us']:
+                    if region in merged[category]:
+                        # Convert string values to list of dictionaries
+                        if isinstance(merged[category][region], str):
+                            merged[category][region] = [{'name': merged[category][region], 'patterns': []}]
+                        # Convert list of strings to list of dictionaries
+                        elif isinstance(merged[category][region], list):
+                            for i, item in enumerate(merged[category][region]):
+                                if isinstance(item, str):
+                                    merged[category][region][i] = {'name': item, 'patterns': []}
+        
         return merged
 
     def save_config(self, config, is_private=True):
         """Save configuration to appropriate YAML file."""
-        filename = 'tax_document_patterns_private.yaml' if is_private else 'tax_document_patterns_base.yaml'
+        filename = 'tax_document_patterns_private.yml' if is_private else 'tax_document_patterns_base.yml'
         config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
         with open(config_path, 'w') as f:
             yaml.dump(config, f, sort_keys=False, default_flow_style=False)
@@ -393,7 +415,14 @@ class TaxDocumentChecker:
             for region in ['uk', 'us']:
                 if region in self.config['investment']:
                     for account in self.config['investment'][region]:
-                        if 'patterns' in account and account['patterns']:
+                        if isinstance(account, str):
+                            # Handle string patterns directly
+                            patterns[f'investment_{region}'].append({
+                                'pattern': account,
+                                'name': f'investment_{region}',
+                                'frequency': 'yearly'  # Default frequency for investments
+                            })
+                        elif isinstance(account, dict) and 'patterns' in account and account['patterns']:
                             for pattern in account['patterns']:
                                 if pattern is not None:
                                     if isinstance(pattern, dict):
@@ -407,8 +436,8 @@ class TaxDocumentChecker:
                                         full_pattern = pattern
                                     patterns[f'investment_{region}'].append({
                                         'pattern': full_pattern,
-                                        'name': account['name'],
-                                        'frequency': account['frequency']
+                                        'name': account.get('name', f'investment_{region}'),
+                                        'frequency': account.get('frequency', 'yearly')
                                     })
 
         # Process bank patterns
@@ -416,7 +445,14 @@ class TaxDocumentChecker:
             for region in ['uk', 'us']:
                 if region in self.config['bank']:
                     for bank in self.config['bank'][region]:
-                        if 'patterns' in bank and bank['patterns']:
+                        if isinstance(bank, str):
+                            # Handle string patterns directly
+                            patterns[f'bank_{region}'].append({
+                                'pattern': bank,
+                                'name': f'bank_{region}',
+                                'frequency': 'monthly'  # Default frequency for bank statements
+                            })
+                        elif isinstance(bank, dict) and 'patterns' in bank and bank['patterns']:
                             for pattern in bank['patterns']:
                                 if pattern is not None:
                                     if isinstance(pattern, dict):
@@ -430,7 +466,7 @@ class TaxDocumentChecker:
                                         full_pattern = pattern
                                     patterns[f'bank_{region}'].append({
                                         'pattern': full_pattern,
-                                        'name': bank['name'],
+                                        'name': bank.get('name', f'bank_{region}'),
                                         'frequency': bank.get('frequency', 'monthly')
                                     })
 
