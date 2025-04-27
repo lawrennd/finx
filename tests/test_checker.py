@@ -1236,8 +1236,11 @@ class TestTaxDocumentChecker(unittest.TestCase):
             self.assertIn('Test Account', dates)
             self.assertEqual(dates['Test Account']['start_date'], '2023-01-01')
             self.assertEqual(dates['Test Account']['end_date'], '2023-01-01')
-            self.assertEqual(len(dates['Test Account']['files']), 1)
+            # All files are included, but only valid dates are used for start/end dates
+            self.assertEqual(len(dates['Test Account']['files']), 3)
             self.assertIn('2023-01-01_test.pdf', dates['Test Account']['files'])
+            self.assertIn('invalid-date_test.pdf', dates['Test Account']['files'])
+            self.assertIn('2023-13-45_test.pdf', dates['Test Account']['files'])
 
 if __name__ == '__main__':
     unittest.main()
