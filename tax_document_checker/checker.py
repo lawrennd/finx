@@ -23,7 +23,7 @@ FREQUENCY_EXPECTATIONS = {
 }
 
 class TaxDocumentChecker:
-    def __init__(self, base_path, tax_year_path=None, config_file=None, private_config_file=None, directory_mapping_file=None):
+    def __init__(self, base_path, tax_year_path=None, config_file=None, private_config_file=None, directory_mapping_file=None, verbose=False):
         """Initialize the tax document checker.
         
         Args:
@@ -32,18 +32,70 @@ class TaxDocumentChecker:
             config_file: Path to the base configuration file
             private_config_file: Path to the private configuration file
             directory_mapping_file: Path to the directory mapping configuration file
+            verbose: Whether to print verbose output
         """
         self.base_path = Path(base_path)
         self.tax_year_path = Path(tax_year_path) if tax_year_path else None
-        self.config_file = config_file
-        self.private_config_file = private_config_file
-        self.directory_mapping_file = directory_mapping_file or Path(__file__).parent.parent.parent / "directory_mapping.yaml"
+        self.verbose = verbose
+        
+        if self.verbose:
+            print(f"Initializing TaxDocumentChecker with base_path: {self.base_path}")
+        
+        # Search for config files in multiple locations
+        def find_config_file(filename, explicit_path=None):
+            if explicit_path and os.path.exists(explicit_path):
+                if self.verbose:
+                    print(f"Found {filename} at explicit path: {explicit_path}")
+                return explicit_path
+            
+            # Try current working directory
+            cwd_path = Path.cwd() / filename
+            if cwd_path.exists():
+                if self.verbose:
+                    print(f"Found {filename} in current working directory: {cwd_path}")
+                return str(cwd_path)
+            
+            # Try base directory
+            base_dir_path = self.base_path / filename
+            if base_dir_path.exists():
+                if self.verbose:
+                    print(f"Found {filename} in base directory: {base_dir_path}")
+                return str(base_dir_path)
+            
+            # Try code directory as fallback
+            code_path = Path(__file__).parent.parent / filename
+            if code_path.exists():
+                if self.verbose:
+                    print(f"Found {filename} in code directory: {code_path}")
+                return str(code_path)
+            
+            if self.verbose:
+                print(f"Could not find {filename} in any location")
+            return explicit_path  # Return explicit path even if not found, for error messaging
+        
+        # Find config files in order of precedence
+        self.config_file = find_config_file('config.yaml', config_file)
+        self.private_config_file = find_config_file('private_config.yaml', private_config_file)
+        self.directory_mapping_file = find_config_file('directory_mapping.yaml', directory_mapping_file)
+        
+        if self.verbose:
+            print("\nLoading configurations...")
+        
         self.base_config = self.load_base_config()
         self.private_config = self.load_private_config()
         self.directory_mapping = self.load_directory_mapping()
         self.config = self.merge_configs()
+        
+        if self.verbose:
+            print("\nFlattening configuration...")
         self.required_patterns = self.flatten_config()
+        
+        if self.verbose:
+            print("\nAnalyzing account dates...")
         self.account_dates = self.analyze_account_dates()
+        
+        if self.verbose:
+            print("Initialization complete")
 
     def load_base_config(self):
         """Load base configuration from YAML file."""
@@ -528,22 +580,36 @@ def main():
     parser = argparse.ArgumentParser(description='Check tax documents for a specific year')
     parser.add_argument('--year', type=str, help='Specific year to check (e.g., 2023)')
     parser.add_argument('--update-dates', action='store_true', help='Update YAML with inferred dates')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
     args = parser.parse_args()
     
     # Assuming the script is run from the parent directory of the tax folders
     base_path = os.path.dirname(os.path.abspath(__file__))
-    checker = TaxDocumentChecker(base_path)
+    checker = TaxDocumentChecker(base_path, verbose=args.verbose)
+    
+    if args.verbose:
+        print(f"Base path: {base_path}")
+        print(f"Config file: {checker.config_file}")
+        print(f"Private config file: {checker.private_config_file}")
+        print(f"Directory mapping file: {checker.directory_mapping_file}")
     
     if args.update_dates:
+        if args.verbose:
+            print("Updating YAML file with inferred dates...")
         updated_config = checker.update_yaml_with_dates()
         print("Updated YAML file with inferred dates")
         return
     
     if args.year:
+        if args.verbose:
+            print(f"Checking documents for year {args.year}")
         checker.check_year(args.year)
     else:
         available_years = checker.list_available_years()
         print(f"Available tax years: {', '.join(available_years)}")
+        
+        if args.verbose:
+            print(f"Checking documents for all available years: {available_years}")
         
         for year in available_years:
             checker.check_year(year)

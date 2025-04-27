@@ -28,14 +28,26 @@ This tool helps you track and validate your tax documents by checking for the pr
 
 ## Installation
 
+### Option 1: Install directly with pip
+```bash
+pip install git+https://github.com/lawrennd/tax_document_checker.git
+```
+
+Note: To install from the private repository, you need:
+- Git installed on your system
+- Access permissions to the repository
+- Git credentials configured to access private repositories
+- If using SSH, ensure your SSH key is added to your GitHub account
+
+### Option 2: Install from source using Poetry (for development)
 1. Clone this repository:
-   ```
+   ```bash
    git clone https://github.com/lawrennd/tax_document_checker.git
    cd tax_document_checker
    ```
 
 2. Install using Poetry:
-   ```
+   ```bash
    poetry install
    ```
 
@@ -44,160 +56,49 @@ This tool helps you track and validate your tax documents by checking for the pr
 ### Basic Usage
 
 To check all available tax years:
-```
-poetry run tax-document-checker
+```bash
+tax-document-checker
 ```
 
 To check a specific tax year:
-```
-poetry run tax-document-checker --year 2023
+```bash
+tax-document-checker --year 2023
 ```
 
 To update the YAML configuration with inferred dates:
-```
-poetry run tax-document-checker --update-dates
+```bash
+tax-document-checker --update-dates
 ```
 
 To specify a custom base path for tax documents:
+```bash
+tax-document-checker --base-path /path/to/tax/documents
 ```
-poetry run tax-document-checker --base-path /path/to/tax/documents
+
+To show detailed information about configuration loading and file searching:
+```bash
+tax-document-checker --verbose
+```
+
+Note: If you installed using Poetry for development, prefix the commands with `poetry run`:
+```bash
+poetry run tax-document-checker
 ```
 
 The tool returns the following exit codes:
-- `0`: Success (all documents found and valid)
-- `1`: Failure (missing documents or no tax years found)
 
-### Configuration
+## Exit Codes
 
-The tool uses two YAML configuration files:
+- `0`: Success
+- `1`: General error
+- `2`: Configuration error
+- `3`: File system error
 
-1. `tax_document_patterns_base.yaml` - Contains public patterns and configurations (e.g., document types like P60, 1099)
-2. `tax_document_patterns_private.yaml` - Contains private account-specific information (DO NOT commit to version control)
+## Additional Notes
 
-#### Base Configuration
-The base configuration defines the standard patterns and document types that are common across all users. Example:
-```yaml
-employment:
-  patterns:
-    payslip:
-      base: payslip
-      frequency: monthly
-      annual_document_type: P60
+The tool returns the following exit codes:
 
-investment:
-  us:
-    patterns:
-      statement:
-        base: statement
-        frequency: quarterly
-      form_1099:
-        base: 1099
-        frequency: yearly
-```
-
-#### Private Configuration
-The private configuration contains your specific account information and patterns. This file should never be committed to version control. Example:
-```yaml
-employment:
-  current:
-  - name: "Example Company"
-    patterns:
-    - base: company-name
-    frequency: monthly
-    annual_document_type: P60
-    start_date: '2020-01-01'
-    end_date: null
-
-bank:
-  uk:
-  - name: "Example Bank"
-    account_types:
-    - name: "Joint Account"
-      patterns:
-      - base: bank-joint
-      frequency: monthly
-    - name: "Personal Account"
-      patterns:
-      - base: bank-personal
-      frequency: monthly
-```
-
-### Directory Structure
-Your tax documents should be organized in the following structure:
-```
-tax_documents/
-├── UK-payslips/
-│   └── 2023/
-│       ├── company-2023-01.pdf
-│       ├── company-2023-02.pdf
-│       └── ...
-├── US-investments/
-│   └── 2023/
-│       ├── broker-statement-2023-Q1.pdf
-│       ├── broker-statement-2023-Q2.pdf
-│       └── ...
-└── UK-savings/
-    └── 2023/
-        ├── bank-joint-2023-01.pdf
-        ├── bank-joint-2023-02.pdf
-        └── ...
-```
-
-## Project Structure
-
-```
-tax_document_checker/
-├── README.md
-├── pyproject.toml
-├── poetry.lock
-├── tax_document_checker/
-│   ├── __init__.py
-│   ├── cli.py
-│   ├── checker.py
-│   ├── tax_document_patterns_base.yaml
-│   └── tax_document_patterns_private.yaml
-├── tests/
-│   ├── __init__.py
-│   ├── test_checker.py
-│   └── test_data/
-│       ├── UK-payslips/
-│       ├── US-investments/
-│       └── ...
-└── docs/
-    ├── usage.md
-    └── testing_guidelines.md
-```
-
-## Requirements
-
-- Python 3.8+
-- Poetry
-- PyYAML
-
-## Testing
-
-The project uses pytest for testing. For comprehensive testing guidelines and best practices, see [Testing Guidelines](docs/testing_guidelines.mdc).
-
-To run the tests:
-
-```
-poetry run pytest
-```
-
-For more verbose output:
-```
-poetry run pytest -v
-```
-
-To run tests with coverage report:
-```
-poetry run pytest --cov=tax_document_checker
-```
-
-For detailed usage instructions and examples, see [Usage Guide](docs/usage.md).
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-Note: When contributing, make sure not to commit any private information. The `tax_document_patterns_private.yaml` file is listed in `.gitignore` and should never be committed to version control.
+- `0`: Success
+- `1`: General error
+- `2`: Configuration error
+- `3`: File system error
