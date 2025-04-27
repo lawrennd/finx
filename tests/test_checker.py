@@ -1271,5 +1271,31 @@ class TestTaxDocumentChecker(unittest.TestCase):
         self.assertEqual(merged['investment']['us'][0]['name'], 'US Fund 2')
         self.assertEqual(merged['investment']['us'][0]['patterns'], ['pattern2'])
 
+    def test_check_year_error_handling(self):
+        """Test error handling in check_year method."""
+        # Set up test data with invalid dates
+        self.checker.required_patterns = {
+            'employment': [{
+                'pattern': r'\d{4}-\d{2}-\d{2}_company\.pdf',
+                'name': 'Test Company',
+                'frequency': 'monthly',
+                'start_date': 'invalid-date',  # Invalid date format
+                'end_date': '2023-12-31'
+            }]
+        }
+
+        # Mock find_files_matching_pattern to return some files
+        with patch.object(self.checker, 'find_files_matching_pattern') as mock_find:
+            mock_find.return_value = ['/test/2023-01-01_company.pdf']
+            
+            # Run check_year with verbose output
+            with patch('builtins.print') as mock_print:
+                self.checker.verbose = True
+                result = self.checker.check_year('2023')
+                
+                # Verify that the method handled the invalid date gracefully
+                self.assertEqual(result['employment'], ['/test/2023-01-01_company.pdf'])
+                mock_print.assert_any_call('  Warning: Could not parse dates, proceeding with check')
+
 if __name__ == '__main__':
     unittest.main()
