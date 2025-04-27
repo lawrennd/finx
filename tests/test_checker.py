@@ -860,5 +860,131 @@ class TestTaxDocumentChecker(unittest.TestCase):
         years = self.checker.list_available_years()
         self.assertEqual(years, [])
 
+    def test_load_private_config_file_not_found(self):
+        """Test loading private config when file doesn't exist."""
+        self.checker.private_config_file = '/nonexistent/path/private_config.yaml'
+        config = self.checker.load_private_config()
+        self.assertEqual(config, {})
+
+    def test_load_directory_mapping_file_not_found(self):
+        """Test loading directory mapping when file doesn't exist."""
+        self.checker.directory_mapping_file = '/nonexistent/path/directory_mapping.yaml'
+        mapping = self.checker.load_directory_mapping()
+        self.assertEqual(mapping, {})
+
+    def test_merge_configs_with_non_list_values(self):
+        """Test merging configs with non-list values."""
+        self.checker.base_config = {
+            'test': {
+                'subcategory': {'key': 'value1'}
+            }
+        }
+        self.checker.private_config = {
+            'test': {
+                'subcategory': {'key': 'value2'}
+            }
+        }
+        merged = self.checker.merge_configs()
+        self.assertEqual(merged['test']['subcategory']['key'], 'value2')
+
+    def test_flatten_config_with_empty_patterns(self):
+        """Test flattening config with empty patterns."""
+        self.checker.config = {
+            'employment': {
+                'current': [{
+                    'name': 'Test Corp',
+                    'frequency': 'monthly',
+                    'patterns': []
+                }]
+            }
+        }
+        patterns = self.checker.flatten_config()
+        self.assertEqual(patterns['employment'], [])
+
+    def test_flatten_config_with_additional_patterns(self):
+        """Test flattening config with additional patterns section."""
+        self.checker.config = {
+            'additional': {
+                'patterns': {
+                    'test_doc': {
+                        'base': 'test',
+                        'frequency': 'yearly'
+                    }
+                }
+            }
+        }
+        patterns = self.checker.flatten_config()
+        self.assertTrue(any(p['name'] == 'test_doc' for p in patterns['additional']))
+        self.assertTrue(any(p['frequency'] == 'yearly' for p in patterns['additional']))
+
+    def test_list_available_years_with_invalid_tax_year_path(self):
+        """Test listing available years with an invalid tax year path."""
+        self.checker.tax_year_path = Path('invalid/path')
+        years = self.checker.list_available_years()
+        self.assertEqual(years, [])
+
+    def test_build_pattern_with_all_components(self):
+        """Test building pattern with all possible components."""
+        pattern = self.checker.build_pattern(
+            base='test',
+            suffix='suffix',
+            account_type='savings',
+            identifiers=['id1', 'id2']
+        )
+        self.assertIn('test', pattern)
+        self.assertIn('suffix', pattern)
+        self.assertIn('savings', pattern)
+        self.assertIn('(?:id1|id2)', pattern)
+
+    def test_check_year_with_invalid_date_format(self):
+        """Test checking a year with invalid date format."""
+        self.checker.required_patterns = {
+            'employment': [
+                {
+                    'pattern': r'\d{4}-\d{2}-\d{2}_company\.pdf',
+                    'name': 'Company',
+                    'frequency': 'monthly',
+                    'start_date': 'invalid-format',
+                    'end_date': 'also-invalid'
+                }
+            ]
+        }
+        
+        with patch.object(self.checker, 'find_files_matching_pattern') as mock_find:
+            mock_find.return_value = ['/test/2023-01-01_company.pdf']
+            
+            with patch('builtins.print') as mock_print:
+                result = self.checker.check_year('2023')
+                self.assertEqual(result['employment'], ['/test/2023-01-01_company.pdf'])
+
+    def test_check_year_missing_documents_summary(self):
+        """Test the missing documents summary in check_year."""
+        self.checker.required_patterns = {
+            'employment': [
+                {
+                    'pattern': r'\d{4}-\d{2}-\d{2}_company\.pdf',
+                    'name': 'Missing Company',
+                    'frequency': 'monthly'
+                }
+            ]
+        }
+        
+        with patch.object(self.checker, 'find_files_matching_pattern', return_value=[]):
+            with patch('builtins.print') as mock_print:
+                self.checker.check_year('2023')
+                mock_print.assert_any_call("\nEMPLOYMENT:")
+                mock_print.assert_any_call("- Missing Company (monthly)")
+
+    def test_main_function_error_handling(self):
+        """Test error handling in the main function."""
+        with patch('sys.argv', ['tax-document-checker', '--year', '2023']):
+            with patch('argparse.ArgumentParser.parse_args') as mock_args:
+                mock_args.return_value = MagicMock(year='2023', update_dates=False)
+                with patch.object(TaxDocumentChecker, 'check_year', side_effect=Exception('Test error')):
+                    with patch('os.path.dirname', return_value='/test/path'):
+                        with self.assertRaises(Exception):
+                            from tax_document_checker.checker import main
+                            main()
+
 if __name__ == '__main__':
     unittest.main()
