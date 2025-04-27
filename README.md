@@ -58,6 +58,15 @@ To update the YAML configuration with inferred dates:
 poetry run tax-document-checker --update-dates
 ```
 
+To specify a custom base path for tax documents:
+```
+poetry run tax-document-checker --base-path /path/to/tax/documents
+```
+
+The tool returns the following exit codes:
+- `0`: Success (all documents found and valid)
+- `1`: Failure (missing documents or no tax years found)
+
 ### Configuration
 
 The tool uses two YAML configuration files:
