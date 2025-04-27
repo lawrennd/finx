@@ -6,11 +6,31 @@ from pathlib import Path
 from .checker import TaxDocumentChecker
 
 def main():
-    parser = argparse.ArgumentParser(description='Check tax documents against configured patterns')
+    parser = argparse.ArgumentParser(
+        description='Check tax documents against configured patterns',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Check all available tax years
+  tax-document-checker
+  
+  # Check a specific tax year
+  tax-document-checker --year 2023
+  
+  # Update YAML with inferred dates
+  tax-document-checker --update-dates
+  
+  # Check with verbose output
+  tax-document-checker --verbose
+  
+  # Check documents in a specific directory
+  tax-document-checker --base-path /path/to/documents
+        """
+    )
     parser.add_argument('--year', type=str, help='Specific tax year to check (e.g., 2023)')
-    parser.add_argument('--update-dates', action='store_true', help='Update YAML with inferred dates')
-    parser.add_argument('--base-path', type=str, default='.', help='Base path for tax documents')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
+    parser.add_argument('--update-dates', action='store_true', help='Update YAML with inferred dates from filenames')
+    parser.add_argument('--base-path', type=str, default='.', help='Base path for tax documents (default: current directory)')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output for debugging')
     
     args = parser.parse_args()
     
@@ -54,7 +74,8 @@ def main():
     for year in years:
         if args.verbose:
             print(f"\nProcessing year {year}...")
-        if not checker.check_year(year):
+        result = checker.check_year(year)
+        if not result:
             all_found = False
     
     if args.verbose:

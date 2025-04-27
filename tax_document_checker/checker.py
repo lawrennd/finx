@@ -6,6 +6,7 @@ import yaml
 from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
+from typing import Optional
 
 # Standard patterns used across all document types
 STANDARD_PATTERNS = {
@@ -259,7 +260,7 @@ class TaxDocumentChecker:
         
         return account_dates
 
-    def validate_frequency(self, matches, frequency, year):
+    def validate_frequency(self, matches, frequency, year, pattern_info=None):
         """Validate that the number of files matches the expected frequency."""
         if not matches:
             return False, 0, FREQUENCY_EXPECTATIONS.get(frequency, 1)
@@ -366,6 +367,7 @@ class TaxDocumentChecker:
 
     def flatten_config(self):
         """Flatten the configuration into a list of patterns for each category."""
+        print("Starting to flatten config...")
         patterns = {
             'employment': [],
             'investment_us': [],
@@ -376,12 +378,15 @@ class TaxDocumentChecker:
         }
 
         if not self.config:
+            print("No config found, returning empty patterns")
             return patterns
 
+        print("Processing employment patterns...")
         # Process employment patterns
         if 'employment' in self.config:
             # Process all employment records regardless of category
             for category in self.config['employment']:
+                print(f"Processing employment category: {category}")
                 for employer in self.config['employment'][category]:
                     if 'patterns' in employer and employer['patterns']:
                         for pattern in employer['patterns']:
@@ -395,25 +400,20 @@ class TaxDocumentChecker:
                                 else:
                                     full_pattern = pattern
                                 
-                                # Get start and end dates from account_dates if available
-                                start_date = None
-                                end_date = None
-                                if employer['name'] in self.account_dates:
-                                    start_date = self.account_dates[employer['name']]['start_date']
-                                    end_date = self.account_dates[employer['name']]['end_date']
-                                
                                 patterns['employment'].append({
                                     'pattern': full_pattern,
                                     'name': employer['name'],
                                     'frequency': employer['frequency'],
-                                    'start_date': start_date,
-                                    'end_date': end_date
+                                    'start_date': employer.get('start_date'),
+                                    'end_date': employer.get('end_date')
                                 })
 
+        print("Processing investment patterns...")
         # Process investment patterns
         if 'investment' in self.config:
             for region in ['uk', 'us']:
                 if region in self.config['investment']:
+                    print(f"Processing investment region: {region}")
                     for account in self.config['investment'][region]:
                         if isinstance(account, str):
                             # Handle string patterns directly
@@ -437,13 +437,17 @@ class TaxDocumentChecker:
                                     patterns[f'investment_{region}'].append({
                                         'pattern': full_pattern,
                                         'name': account.get('name', f'investment_{region}'),
-                                        'frequency': account.get('frequency', 'yearly')
+                                        'frequency': account.get('frequency', 'yearly'),
+                                        'start_date': account.get('start_date'),
+                                        'end_date': account.get('end_date')
                                     })
 
+        print("Processing bank patterns...")
         # Process bank patterns
         if 'bank' in self.config:
             for region in ['uk', 'us']:
                 if region in self.config['bank']:
+                    print(f"Processing bank region: {region}")
                     for bank in self.config['bank'][region]:
                         if isinstance(bank, str):
                             # Handle string patterns directly
@@ -452,38 +456,102 @@ class TaxDocumentChecker:
                                 'name': f'bank_{region}',
                                 'frequency': 'monthly'  # Default frequency for bank statements
                             })
-                        elif isinstance(bank, dict) and 'patterns' in bank and bank['patterns']:
-                            for pattern in bank['patterns']:
-                                if pattern is not None:
-                                    if isinstance(pattern, dict):
-                                        full_pattern = self.build_pattern(
-                                            pattern.get('base', ''),
-                                            suffix=pattern.get('suffix'),
-                                            account_type=pattern.get('account_type'),
-                                            identifiers=pattern.get('identifiers')
-                                        )
-                                    else:
-                                        full_pattern = pattern
-                                    patterns[f'bank_{region}'].append({
-                                        'pattern': full_pattern,
-                                        'name': bank.get('name', f'bank_{region}'),
-                                        'frequency': bank.get('frequency', 'monthly')
-                                    })
+                        elif isinstance(bank, dict):
+                            print(f"Processing bank: {bank.get('name', 'unknown')}")
+                            # Process account types if present
+                            account_types = bank.get('account_types')
+                            if account_types is not None:
+                                for account_type in account_types:
+                                    if 'patterns' in account_type:
+                                        for pattern in account_type['patterns']:
+                                            if pattern is not None:
+                                                if isinstance(pattern, dict):
+                                                    full_pattern = self.build_pattern(
+                                                        pattern.get('base', ''),
+                                                        suffix=pattern.get('suffix'),
+                                                        account_type=pattern.get('account_type'),
+                                                        identifiers=pattern.get('identifiers')
+                                                    )
+                                                else:
+                                                    full_pattern = pattern
+                                                patterns[f'bank_{region}'].append({
+                                                    'pattern': full_pattern,
+                                                    'name': f"{bank['name']} - {account_type['name']}",
+                                                    'frequency': account_type.get('frequency', 'monthly'),
+                                                    'start_date': pattern.get('start_date'),
+                                                    'end_date': pattern.get('end_date')
+                                                })
+                            # Process patterns directly on bank if present
+                            elif 'patterns' in bank:
+                                for pattern in bank['patterns']:
+                                    if pattern is not None:
+                                        if isinstance(pattern, dict):
+                                            full_pattern = self.build_pattern(
+                                                pattern.get('base', ''),
+                                                suffix=pattern.get('suffix'),
+                                                account_type=pattern.get('account_type'),
+                                                identifiers=pattern.get('identifiers')
+                                            )
+                                        else:
+                                            full_pattern = pattern
+                                        patterns[f'bank_{region}'].append({
+                                            'pattern': full_pattern,
+                                            'name': bank.get('name', f'bank_{region}'),
+                                            'frequency': bank.get('frequency', 'monthly'),
+                                            'start_date': pattern.get('start_date'),
+                                            'end_date': pattern.get('end_date')
+                                        })
 
+        print("Processing additional patterns...")
         # Process additional patterns
         if 'additional' in self.config:
-            if 'patterns' in self.config['additional']:
-                for doc_type, info in self.config['additional']['patterns'].items():
-                    if isinstance(info, dict):
-                        pattern = info.get('base', '')
-                        if pattern:
-                            full_pattern = self.build_pattern(pattern)
-                            patterns['additional'].append({
-                                'pattern': full_pattern,
-                                'name': doc_type,
-                                'frequency': info.get('frequency', 'yearly')
-                            })
+            if isinstance(self.config['additional'], dict) and 'patterns' in self.config['additional']:
+                patterns_dict = self.config['additional']['patterns']
+                for name, pattern_info in patterns_dict.items():
+                    if isinstance(pattern_info, dict):
+                        full_pattern = self.build_pattern(
+                            pattern_info.get('base', ''),
+                            suffix=pattern_info.get('suffix'),
+                            account_type=pattern_info.get('account_type'),
+                            identifiers=pattern_info.get('identifiers')
+                        )
+                        patterns['additional'].append({
+                            'pattern': full_pattern,
+                            'name': name,
+                            'frequency': pattern_info.get('frequency', 'yearly'),
+                            'start_date': pattern_info.get('start_date'),
+                            'end_date': pattern_info.get('end_date')
+                        })
+            elif isinstance(self.config['additional'], list):
+                for item in self.config['additional']:
+                    if isinstance(item, str):
+                        # Handle string patterns directly
+                        patterns['additional'].append({
+                            'pattern': item,
+                            'name': 'additional',
+                            'frequency': 'yearly'  # Default frequency for additional documents
+                        })
+                    elif isinstance(item, dict) and 'patterns' in item:
+                        for pattern in item['patterns']:
+                            if pattern is not None:
+                                if isinstance(pattern, dict):
+                                    full_pattern = self.build_pattern(
+                                        pattern.get('base', ''),
+                                        suffix=pattern.get('suffix'),
+                                        account_type=pattern.get('account_type'),
+                                        identifiers=pattern.get('identifiers')
+                                    )
+                                else:
+                                    full_pattern = pattern
+                                patterns['additional'].append({
+                                    'pattern': full_pattern,
+                                    'name': item.get('name', 'additional'),
+                                    'frequency': item.get('frequency', 'yearly'),
+                                    'start_date': item.get('start_date'),
+                                    'end_date': item.get('end_date')
+                                })
 
+        print("Finished flattening config")
         return patterns
 
     def get_year_from_path(self, path):
@@ -602,97 +670,110 @@ class TaxDocumentChecker:
         return sorted(list(years))
 
     def check_year(self, year):
-        """Check tax documents for a specific year."""
-        if self.verbose:
-            print(f"\nStarting document check for tax year {year}")
-            print(f"Base path: {self.base_path}")
-            print(f"Using patterns: {self.required_patterns}")
-        
-        print(f"\nChecking documents for tax year {year}\n{'=' * 50}\n")
+        """Check documents for a specific tax year."""
+        print(f"\nChecking documents for tax year {year}")
+        print("=" * 50 + "\n")
         
         # Initialize results dictionary with all categories from required_patterns
         results = {category: [] for category in self.required_patterns.keys()}
+        all_found = True
+        missing_documents = defaultdict(set)  # Changed to set to avoid duplicates
         
-        # Check each pattern
+        # Process each category
         for category, patterns in self.required_patterns.items():
-            if self.verbose:
-                print(f"\nProcessing category: {category}")
-            
-            print(f"\n{category.upper()}:")
-            for pattern_info in patterns:
-                pattern = pattern_info['pattern']
-                name = pattern_info['name']
-                frequency = pattern_info['frequency']
-                
-                if self.verbose:
-                    print(f"  Checking pattern for {name} ({frequency})")
-                    print(f"  Pattern: {pattern}")
-                
-                # For employment category, check if the record is current for this year
-                if category == 'employment':
-                    start_date = pattern_info.get('start_date')
-                    end_date = pattern_info.get('end_date')
-                    
-                    if self.verbose and (start_date or end_date):
-                        print(f"  Date range: {start_date} to {end_date}")
-                    
-                    # Skip if this employment record is not active during this year
-                    if start_date and end_date:
-                        try:
-                            start_year = int(start_date.split('-')[0])
-                            end_year = int(end_date.split('-')[0])
-                            
-                            if int(year) < start_year or int(year) > end_year:
-                                if self.verbose:
-                                    print(f"  Skipping - outside date range ({start_year} to {end_year})")
-                                print(f"⏭️ Skipping {name} ({frequency}) - not active in {year} (active from {start_year} to {end_year})")
-                                continue
-                        except (ValueError, IndexError):
-                            if self.verbose:
-                                print("  Warning: Could not parse dates, proceeding with check")
-                            # If we can't parse the dates, just proceed with checking the files
-                            pass
-                
-                # Find matching files
-                if self.verbose:
-                    print(f"  Searching for files matching pattern...")
-                matches = self.find_files_matching_pattern(pattern, year, category)
-                
-                if matches:
-                    results[category].extend(matches)
-                    if self.verbose:
-                        print(f"  Found {len(matches)} matching files")
-                    print(f"✓ Found {len(matches)} files for {name} ({frequency})")
-                else:
-                    if self.verbose:
-                        print("  No matching files found")
-                    print(f"✗ No files found for {name} ({frequency})")
-        
-        # Print summary of missing documents
-        print("\nMISSING OR INCOMPLETE DOCUMENTS SUMMARY:\n" + "=" * 50 + "\n")
-        for category, patterns in self.required_patterns.items():
-            missing = []
-            for pattern_info in patterns:
-                pattern = pattern_info['pattern']
-                name = pattern_info['name']
-                frequency = pattern_info['frequency']
-                
-                if self.verbose:
-                    print(f"  Checking {name} for missing documents...")
-                
-                matches = self.find_files_matching_pattern(pattern, year, category)
-                if not matches:
-                    missing.append(f"- {name} ({frequency})")
-            
-            if missing:
+            if patterns:
                 print(f"\n{category.upper()}:")
-                print("\n".join(missing))
+                for pattern_info in patterns:
+                    pattern = pattern_info['pattern']
+                    name = pattern_info['name']
+                    frequency = pattern_info.get('frequency', 'yearly')
+                    
+                    # Check date range
+                    calendar_year_start = datetime(int(year), 1, 1)
+                    calendar_year_end = datetime(int(year), 12, 31)
+                    
+                    try:
+                        start_date = datetime.strptime(pattern_info.get('start_date', '1900-01-01'), '%Y-%m-%d')
+                        end_date = datetime.strptime(pattern_info.get('end_date', '9999-12-31'), '%Y-%m-%d')
+                        
+                        # Skip if completely outside date range
+                        if end_date < calendar_year_start or start_date > calendar_year_end:
+                            print(f"⏭️ Skipping {name} ({frequency}) - not active in {year} (active from {start_date.year} to {end_date.year})")
+                            continue
+                    except (ValueError, TypeError):
+                        if self.verbose:
+                            print(f"  Warning: Could not parse dates, proceeding with check")
+                    
+                    # Find matching files
+                    matches = self.find_files_matching_pattern(pattern, year, category)
+                    
+                    # Add files to results if found
+                    if matches:
+                        results[category].extend(matches)
+                    
+                    # Validate frequency
+                    is_valid, found_count, expected_count = self.validate_frequency(matches, frequency, year, pattern_info)
+                    
+                    if found_count > 0:
+                        if is_valid:
+                            print(f"✓ Found {found_count} files for {name} ({frequency})")
+                        else:
+                            print(f"✗ Found {found_count} files for {name} ({frequency}), expected {expected_count}")
+                            # For bank accounts, only add the bank name without account type
+                            if category.startswith('bank_'):
+                                bank_name = name.split(' - ')[0]  # Get the bank name before the account type
+                                missing_documents[category].add(f"- {bank_name} ({frequency})")
+                            else:
+                                missing_documents[category].add(f"- {name} ({frequency})")
+                            all_found = False
+                    else:
+                        print(f"✗ No files found for {name} ({frequency})")
+                        # For bank accounts, only add the bank name without account type
+                        if category.startswith('bank_'):
+                            bank_name = name.split(' - ')[0]  # Get the bank name before the account type
+                            missing_documents[category].add(f"- {bank_name} ({frequency})")
+                        else:
+                            missing_documents[category].add(f"- {name} ({frequency})")
+                        all_found = False
         
-        if self.verbose:
-            print("\nDocument check complete")
-            print(f"Results: {results}")
+        # Print missing documents summary
+        if missing_documents:
+            print("\nMISSING OR INCOMPLETE DOCUMENTS SUMMARY:")
+            print("=" * 50 + "\n")
+            for category, documents in missing_documents.items():
+                print(f"\n{category.upper()}:")
+                for doc in sorted(documents):  # Sort the documents for consistent output
+                    print(doc)
+                print()
         
         return results
+
+    def find_config_file(self, filename: str) -> Optional[Path]:
+        """Find a configuration file in various locations."""
+        # Search order:
+        # 1. Explicit path if provided
+        # 2. Base directory (where the tax documents are)
+        # 3. Current working directory
+        # 4. Code directory
+        if self.base_path:
+            base_path = Path(self.base_path)
+            if base_path.exists():
+                # First check in base directory
+                base_file = base_path / filename
+                if base_file.exists():
+                    return base_file
+                
+                # Then check in current working directory
+                cwd_file = Path.cwd() / filename
+                if cwd_file.exists():
+                    return cwd_file
+                
+                # Finally check in code directory
+                code_file = Path(__file__).parent / filename
+                if code_file.exists():
+                    return code_file
+        
+        return None
 
 def main():
     import argparse

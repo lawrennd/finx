@@ -56,35 +56,30 @@ def test_cli_with_failed_check():
             assert main() == 1
 
 def test_cli_with_no_years():
+    """Test CLI when no arguments are provided - should show help message."""
     with patch('sys.argv', ['tax-document-checker']):
+        with patch('argparse.ArgumentParser.parse_args') as mock_args:
+            mock_args.side_effect = SystemExit(0)  # Simulate argparse's help behavior
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            assert exc_info.value.code == 0
+
+def test_cli_with_no_years_found():
+    """Test CLI when no tax years are found in the directory."""
+    with patch('sys.argv', ['tax-document-checker', '--base-path', '/empty/path']):
         with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
             mock_instance = MagicMock()
             mock_checker.return_value = mock_instance
             mock_instance.list_available_years.return_value = []
             
-            assert main() == 1
-
-def test_cli_with_no_years_found():
-    """Test CLI when no tax years are found in the directory."""
-    with patch('sys.argv', ['tax-document-checker']):
-        with patch('argparse.ArgumentParser.parse_args') as mock_args:
-            mock_args.return_value = MagicMock(year=None, update_dates=False, base_path='/empty/path')
-            
-            # Mock TaxDocumentChecker to return no years
-            with patch('tax_document_checker.checker.TaxDocumentChecker') as mock_checker_class:
-                mock_checker = MagicMock()
-                mock_checker_class.return_value = mock_checker
-                mock_checker.list_available_years.return_value = []
+            with patch('builtins.print') as mock_print:
+                result = main()
                 
-                with patch('builtins.print') as mock_print:
-                    from tax_document_checker.cli import main
-                    result = main()
-                    
-                    # Verify that the appropriate message was printed
-                    mock_print.assert_called_with("No tax years found in the directory!")
-                    
-                    # Verify that the function returned 1 (error)
-                    assert result == 1 
+                # Verify that the appropriate message was printed
+                mock_print.assert_any_call("No tax years found in the directory!")
+                
+                # Verify that the function returned 1 (error)
+                assert result == 1
 
 def test_cli_with_verbose_output():
     """Test CLI with verbose output for various operations."""

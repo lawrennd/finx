@@ -775,24 +775,33 @@ class TestTaxDocumentChecker(unittest.TestCase):
                 }
             ]
         }
-        
-        # Mock find_files_matching_pattern to return different results
-        with patch.object(self.checker, 'find_files_matching_pattern') as mock_find:
-            # Company1 should be skipped for 2023
-            # Company2 should be checked for 2023
-            mock_find.return_value = ['/test/2023-01-01_company2.pdf']
-            
+
+        # Mock find_files_matching_pattern to return different results for each company
+        def mock_find_files(pattern, year, category):
+            if 'company1' in pattern:
+                # Company1 should be skipped for 2023 (ended in 2022)
+                return []
+            elif 'company2' in pattern:
+                # Company2 should have 12 files for 2023 (active in 2023)
+                return [f'/test/2023-{month:02d}-01_company2.pdf' for month in range(1, 13)]
+            return []
+
+        with patch.object(self.checker, 'find_files_matching_pattern', side_effect=mock_find_files):
+            # Capture print output to verify skip message
             with patch('builtins.print') as mock_print:
+                # Run the check for 2023
                 result = self.checker.check_year('2023')
                 
-                # Verify that Company1 was skipped
+                # Verify that Company1 was skipped (no files)
+                # Verify that Company2 has all 12 monthly files
+                expected_files = [f'/test/2023-{month:02d}-01_company2.pdf' for month in range(1, 13)]
+                self.assertEqual(result['employment'], expected_files)
+                
+                # Verify that Company1 was skipped with the correct message
                 mock_print.assert_any_call("⏭️ Skipping Company1 (monthly) - not active in 2023 (active from 2022 to 2022)")
                 
-                # Verify that Company2 was checked
-                mock_print.assert_any_call("✓ Found 1 files for Company2 (monthly)")
-                
-                # Verify results
-                self.assertEqual(result['employment'], ['/test/2023-01-01_company2.pdf'])
+                # Verify that Company2 was found with the correct message
+                mock_print.assert_any_call("✓ Found 12 files for Company2 (monthly)")
 
     def test_find_files_matching_pattern_with_nonexistent_directory(self):
         """Test finding files when the directory doesn't exist."""
@@ -1379,9 +1388,9 @@ class TestTaxDocumentChecker(unittest.TestCase):
         # Verify results
         assert 'Found 2 files for current-job' in output_str
         assert 'Found 1 files for investment-statement' in output_str
-        assert 'No files found for old-job' in output_str  # Old job should be skipped
+        assert '⏭️ Skipping old-job (monthly) - not active in 2023 (active from 2020 to 2021)' in output_str  # Old job should be skipped with date range message
         assert 'MISSING OR INCOMPLETE DOCUMENTS SUMMARY' in output_str
-        assert 'old-job (monthly)' in output_str  # Should be listed in missing documents
+        assert 'current-job (monthly)' in output_str  # Should be listed in missing documents
 
 if __name__ == '__main__':
     unittest.main()
