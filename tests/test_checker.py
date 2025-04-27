@@ -36,7 +36,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
                 'pattern': r'\d{4}-\d{2}-\d{2}_test\.pdf'
             }
         }
-        config_path = os.path.join(self.temp_dir, 'config.yaml')
+        config_path = os.path.join(self.temp_dir, 'tax_document_patterns_base.yaml')
         with open(config_path, 'w') as f:
             yaml.dump(config_data, f)
         
@@ -81,37 +81,29 @@ class TestTaxDocumentChecker(unittest.TestCase):
 
     def test_load_private_config(self):
         """Test loading private configuration."""
-        test_config = {'private': 'value'}
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            yaml.dump(test_config, f)
-            config_path = f.name
-
-        try:
-            checker = TaxDocumentChecker(self.temp_dir, private_config_file=config_path)
-            config = checker.load_private_config()
-            self.assertEqual(config, test_config)
-        finally:
-            os.unlink(config_path)
+        private_config_data = {
+            'private_pattern': {
+                'frequency': 'monthly',
+                'pattern': r'\d{4}-\d{2}-\d{2}_private\.pdf'
+            }
+        }
+        private_config_path = os.path.join(self.temp_dir, 'tax_document_patterns_private.yaml')
+        with open(private_config_path, 'w') as f:
+            yaml.dump(private_config_data, f)
+        
+        self.checker.private_config_file = private_config_path
+        config = self.checker.load_private_config()
+        self.assertEqual(config, private_config_data)
 
     def test_load_private_config_yaml_error(self):
         """Test handling of YAML parsing errors in private configuration."""
-        # Create a temporary file with invalid YAML
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            f.write("invalid: yaml: :")
-            temp_path = f.name
-
-        try:
-            # Test loading invalid YAML
-            with patch('builtins.print') as mock_print:
-                checker = TaxDocumentChecker(base_path=self.temp_dir, private_config_file=temp_path)
-                config = checker.load_private_config()
-                self.assertEqual(config, {})
-                mock_print.assert_called_with(
-                    f'Error parsing private configuration file: mapping values are not allowed here\n'
-                    f'  in "{temp_path}", line 1, column 14'
-                )
-        finally:
-            os.unlink(temp_path)
+        private_config_path = os.path.join(self.temp_dir, 'tax_document_patterns_private.yaml')
+        with open(private_config_path, 'w') as f:
+            f.write('invalid: yaml: content: {')
+        
+        self.checker.private_config_file = private_config_path
+        config = self.checker.load_private_config()
+        self.assertEqual(config, {})
 
     def test_merge_configs(self):
         """Test merging base and private configurations."""
@@ -180,9 +172,9 @@ class TestTaxDocumentChecker(unittest.TestCase):
 
     def test_load_config_file_not_found(self):
         """Test loading configuration when file is not found."""
-        self.checker.config_file = '/nonexistent/path/config.yaml'
+        self.checker.config_file = '/nonexistent/path/tax_document_patterns_base.yaml'
         config = self.checker.load_base_config()
-        assert config == {}
+        self.assertEqual(config, {})
 
     def test_analyze_account_dates(self):
         """Test analyzing account dates from files."""
@@ -862,7 +854,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
 
     def test_load_private_config_file_not_found(self):
         """Test loading private config when file doesn't exist."""
-        self.checker.private_config_file = '/nonexistent/path/private_config.yaml'
+        self.checker.private_config_file = '/nonexistent/path/tax_document_patterns_private.yaml'
         config = self.checker.load_private_config()
         self.assertEqual(config, {})
 

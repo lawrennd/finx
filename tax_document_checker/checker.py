@@ -74,8 +74,8 @@ class TaxDocumentChecker:
             return explicit_path  # Return explicit path even if not found, for error messaging
         
         # Find config files in order of precedence
-        self.config_file = find_config_file('config.yaml', config_file)
-        self.private_config_file = find_config_file('private_config.yaml', private_config_file)
+        self.config_file = find_config_file('tax_document_patterns_base.yaml', config_file)
+        self.private_config_file = find_config_file('tax_document_patterns_private.yaml', private_config_file)
         self.directory_mapping_file = find_config_file('directory_mapping.yaml', directory_mapping_file)
         
         if self.verbose:
@@ -85,6 +85,9 @@ class TaxDocumentChecker:
         self.private_config = self.load_private_config()
         self.directory_mapping = self.load_directory_mapping()
         self.config = self.merge_configs()
+        
+        # Initialize account_dates before flattening config
+        self.account_dates = {}
         
         if self.verbose:
             print("\nFlattening configuration...")
@@ -143,11 +146,8 @@ class TaxDocumentChecker:
 
     def merge_configs(self):
         """Merge base and private configurations."""
-        merged = {}
-        
-        # Start with base patterns
-        if self.base_config:
-            merged = yaml.safe_load(yaml.dump(self.base_config))  # Deep copy
+        # Start with a deep copy of the base config
+        merged = yaml.safe_load(yaml.dump(self.base_config))  # Deep copy
         
         # Merge with private patterns
         if self.private_config:
@@ -160,15 +160,21 @@ class TaxDocumentChecker:
                         if subcategory not in merged[category]:
                             merged[category][subcategory] = self.private_config[category][subcategory]
                         else:
-                            # If both configs have patterns, combine them
-                            if isinstance(merged[category][subcategory], list):
-                                merged[category][subcategory].extend(self.private_config[category][subcategory])
-                            elif isinstance(merged[category][subcategory], dict):
-                                for key, value in self.private_config[category][subcategory].items():
-                                    if key in merged[category][subcategory] and isinstance(value, list):
-                                        merged[category][subcategory][key].extend(value)
-                                    else:
-                                        merged[category][subcategory][key] = value
+                            # Handle both list and dictionary subcategories
+                            if isinstance(self.private_config[category][subcategory], list):
+                                if isinstance(merged[category][subcategory], list):
+                                    merged[category][subcategory].extend(self.private_config[category][subcategory])
+                                else:
+                                    merged[category][subcategory] = self.private_config[category][subcategory]
+                            elif isinstance(self.private_config[category][subcategory], dict):
+                                if isinstance(merged[category][subcategory], dict):
+                                    for key, value in self.private_config[category][subcategory].items():
+                                        if key in merged[category][subcategory] and isinstance(value, list):
+                                            merged[category][subcategory][key].extend(value)
+                                        else:
+                                            merged[category][subcategory][key] = value
+                                else:
+                                    merged[category][subcategory] = self.private_config[category][subcategory]
         
         return merged
 
@@ -441,10 +447,18 @@ class TaxDocumentChecker:
 
     def find_files_matching_pattern(self, pattern, year=None, category=None):
         """Find all files matching a pattern for a specific year in relevant directories."""
+        if self.verbose:
+            print(f"    Searching for pattern: {pattern}")
+            print(f"    Year: {year}")
+            print(f"    Category: {category}")
+        
         matches = []
         
         # Get relevant directories for this category
         search_dirs = self.directory_mapping.get(category, [])
+        
+        if self.verbose:
+            print(f"    Search directories: {search_dirs}")
         
         # If no specific directories are mapped, search everywhere
         if not search_dirs:
@@ -454,8 +468,13 @@ class TaxDocumentChecker:
             # Construct the full path to search
             search_path = self.base_path / search_dir
             
+            if self.verbose:
+                print(f"    Searching in directory: {search_path}")
+            
             # Skip if directory doesn't exist
             if not search_path.exists():
+                if self.verbose:
+                    print(f"    Directory does not exist: {search_path}")
                 continue
             
             # Use Path.glob to find all PDF files
@@ -463,42 +482,78 @@ class TaxDocumentChecker:
                 if file_path.is_file():
                     # Get the filename only for pattern matching
                     filename = file_path.name
+                    if self.verbose:
+                        print(f"    Checking file: {filename}")
+                    
                     if re.search(pattern, filename):
                         file_year = self.get_year_from_path(file_path)
                         if year is None or file_year == year:
+                            if self.verbose:
+                                print(f"    Match found: {file_path}")
                             matches.append(str(file_path))
         
         # Sort matches alphabetically (effectively by date since filenames start with date)
+        if self.verbose:
+            print(f"    Total matches found: {len(matches)}")
+        
         return sorted(matches)
 
     def list_available_years(self):
         """List all available tax years in the base directory."""
+        if self.verbose:
+            print("\nListing available tax years...")
+            print(f"Base path: {self.base_path}")
+        
         years = set()
         
         # If a specific tax year path is provided, use that
         if self.tax_year_path:
+            if self.verbose:
+                print(f"Using specific tax year path: {self.tax_year_path}")
             try:
                 year_match = re.search(r'20\d{2}', str(self.tax_year_path))
                 if year_match:
                     years.add(year_match.group())
+                    if self.verbose:
+                        print(f"Found year: {year_match.group()}")
             except (ValueError, TypeError):
+                if self.verbose:
+                    print("Error parsing tax year path")
                 pass
             return sorted(list(years))
         
         # Otherwise, search all directories
+        if self.verbose:
+            print("Searching all directories for tax years...")
+        
         for path in self.base_path.glob("*"):
             if path.is_dir():
                 try:
                     # Extract year from directory name
                     year_match = re.search(r'20\d{2}', str(path))
                     if year_match:
-                        years.add(year_match.group())
+                        year = year_match.group()
+                        years.add(year)
+                        if self.verbose:
+                            print(f"Found year {year} in directory: {path}")
                 except (ValueError, TypeError):
+                    if self.verbose:
+                        print(f"Error parsing directory name: {path}")
                     continue
+        
+        if self.verbose:
+            print(f"Total years found: {len(years)}")
+            print(f"Years: {sorted(list(years))}")
+        
         return sorted(list(years))
 
     def check_year(self, year):
         """Check tax documents for a specific year."""
+        if self.verbose:
+            print(f"\nStarting document check for tax year {year}")
+            print(f"Base path: {self.base_path}")
+            print(f"Using patterns: {self.required_patterns}")
+        
         print(f"\nChecking documents for tax year {year}\n{'=' * 50}\n")
         
         # Initialize results dictionary with all categories from required_patterns
@@ -506,16 +561,26 @@ class TaxDocumentChecker:
         
         # Check each pattern
         for category, patterns in self.required_patterns.items():
+            if self.verbose:
+                print(f"\nProcessing category: {category}")
+            
             print(f"\n{category.upper()}:")
             for pattern_info in patterns:
                 pattern = pattern_info['pattern']
                 name = pattern_info['name']
                 frequency = pattern_info['frequency']
                 
+                if self.verbose:
+                    print(f"  Checking pattern for {name} ({frequency})")
+                    print(f"  Pattern: {pattern}")
+                
                 # For employment category, check if the record is current for this year
                 if category == 'employment':
                     start_date = pattern_info.get('start_date')
                     end_date = pattern_info.get('end_date')
+                    
+                    if self.verbose and (start_date or end_date):
+                        print(f"  Date range: {start_date} to {end_date}")
                     
                     # Skip if this employment record is not active during this year
                     if start_date and end_date:
@@ -524,19 +589,29 @@ class TaxDocumentChecker:
                             end_year = int(end_date.split('-')[0])
                             
                             if int(year) < start_year or int(year) > end_year:
+                                if self.verbose:
+                                    print(f"  Skipping - outside date range ({start_year} to {end_year})")
                                 print(f"⏭️ Skipping {name} ({frequency}) - not active in {year} (active from {start_year} to {end_year})")
                                 continue
                         except (ValueError, IndexError):
+                            if self.verbose:
+                                print("  Warning: Could not parse dates, proceeding with check")
                             # If we can't parse the dates, just proceed with checking the files
                             pass
                 
                 # Find matching files
+                if self.verbose:
+                    print(f"  Searching for files matching pattern...")
                 matches = self.find_files_matching_pattern(pattern, year, category)
                 
                 if matches:
                     results[category].extend(matches)
+                    if self.verbose:
+                        print(f"  Found {len(matches)} matching files")
                     print(f"✓ Found {len(matches)} files for {name} ({frequency})")
                 else:
+                    if self.verbose:
+                        print("  No matching files found")
                     print(f"✗ No files found for {name} ({frequency})")
         
         # Print summary of missing documents
@@ -548,22 +623,8 @@ class TaxDocumentChecker:
                 name = pattern_info['name']
                 frequency = pattern_info['frequency']
                 
-                # For employment category, check if the record is current for this year
-                if category == 'employment':
-                    start_date = pattern_info.get('start_date')
-                    end_date = pattern_info.get('end_date')
-                    
-                    # Skip if this employment record is not active during this year
-                    if start_date and end_date:
-                        try:
-                            start_year = int(start_date.split('-')[0])
-                            end_year = int(end_date.split('-')[0])
-                            
-                            if int(year) < start_year or int(year) > end_year:
-                                continue
-                        except (ValueError, IndexError):
-                            # If we can't parse the dates, just proceed with checking the files
-                            pass
+                if self.verbose:
+                    print(f"  Checking {name} for missing documents...")
                 
                 matches = self.find_files_matching_pattern(pattern, year, category)
                 if not matches:
@@ -572,6 +633,10 @@ class TaxDocumentChecker:
             if missing:
                 print(f"\n{category.upper()}:")
                 print("\n".join(missing))
+        
+        if self.verbose:
+            print("\nDocument check complete")
+            print(f"Results: {results}")
         
         return results
 
