@@ -333,8 +333,33 @@ class TaxDocumentChecker:
         if 'bank' in self.config:
             for region in ['uk', 'us']:
                 if region in self.config['bank']:
-                    for account in self.config['bank'][region]:
-                        for pattern in account['patterns']:
+                    for bank in self.config['bank'][region]:
+                        if 'account_types' in bank:
+                            for account_type in bank['account_types']:
+                                for pattern in account_type['patterns']:
+                                    # Handle both dictionary and string patterns
+                                    if isinstance(pattern, dict):
+                                        full_pattern = self.build_pattern(
+                                            pattern.get('base', ''),
+                                            suffix=pattern.get('suffix'),
+                                            account_type=account_type['name'],
+                                            identifiers=pattern.get('identifiers')
+                                        )
+                                    else:
+                                        full_pattern = pattern
+                                    patterns[f'bank_{region}'].append({
+                                        'pattern': full_pattern,
+                                        'name': bank['name'],
+                                        'account_type': account_type['name'],
+                                        'frequency': account_type['frequency']
+                                    })
+        
+        # Process additional patterns
+        if 'additional' in self.config:
+            for category in ['generic']:
+                if category in self.config['additional']:
+                    for doc_type in self.config['additional'][category]:
+                        for pattern in doc_type['patterns']:
                             # Handle both dictionary and string patterns
                             if isinstance(pattern, dict):
                                 full_pattern = self.build_pattern(
@@ -345,10 +370,10 @@ class TaxDocumentChecker:
                                 )
                             else:
                                 full_pattern = pattern
-                            patterns[f'bank_{region}'].append({
+                            patterns['additional'].append({
                                 'pattern': full_pattern,
-                                'name': account['name'],
-                                'frequency': account['frequency']
+                                'name': doc_type['name'],
+                                'frequency': doc_type['frequency']
                             })
         
         return patterns
