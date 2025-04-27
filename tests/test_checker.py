@@ -298,13 +298,24 @@ class TestTaxDocumentChecker(unittest.TestCase):
 
     def test_list_available_years(self):
         """Test listing available tax years."""
-        # Create test directory structure
+        # Create test directory structure with PDF files
         years = ['2021', '2022', '2023']
+        self.checker.directory_mapping = {'test': ['.']}  # Map the root directory
+        
         for year in years:
-            os.makedirs(os.path.join(self.temp_dir, year))
+            dir_path = os.path.join(self.temp_dir, year)
+            os.makedirs(dir_path)
+            # Create a test PDF file in each year directory
+            with open(os.path.join(dir_path, f'{year}-01-01_test.pdf'), 'w') as f:
+                f.write('test content')
         
         available_years = self.checker.list_available_years()
-        assert available_years == years
+        self.assertEqual(sorted(available_years), sorted(years))
+        
+        # Clean up files
+        for year in years:
+            os.remove(os.path.join(self.temp_dir, year, f'{year}-01-01_test.pdf'))
+            os.rmdir(os.path.join(self.temp_dir, year))
 
     def test_get_year_from_path(self):
         """Test extracting year from various path formats."""
@@ -846,11 +857,62 @@ class TestTaxDocumentChecker(unittest.TestCase):
     def test_get_available_years_with_invalid_directory(self):
         """Test getting available years with an invalid directory."""
         # Set up a directory mapping that points to a non-existent directory
-        self.checker.directory_mapping = {'test': '/nonexistent/directory'}
+        self.checker.directory_mapping = {'test': ['/nonexistent/directory']}
         
-        # Should return an empty list for invalid directory
+        # Mock the glob method to avoid actual filesystem operations
+        with patch('pathlib.Path.glob') as mock_glob:
+            # Should return an empty list for invalid directory
+            years = self.checker.list_available_years()
+            self.assertEqual(years, [])
+            
+            # Verify that glob was not called since the directory doesn't exist
+            mock_glob.assert_not_called()
+
+    def test_list_available_years_from_filenames(self):
+        """Test listing available years by extracting them from filenames."""
+        # Create test files with different years
+        test_files = [
+            'payslips/2022-12-15_previous-employer.pdf',
+            'payslips/2023-01-15_example-employer.pdf',
+            'investments/us/2023-03-15_us-investment.pdf',
+            'tax/uk/2023-04-15_tax-return-uk.pdf'
+        ]
+        
+        # Set up directory mapping
+        self.checker.directory_mapping = {
+            'employment': ['payslips'],
+            'investment_us': ['investments/us'],
+            'additional': ['tax/uk']
+        }
+        
+        # Create the test files
+        created_dirs = set()
+        for file_path in test_files:
+            full_path = os.path.join(self.temp_dir, file_path)
+            dir_path = os.path.dirname(full_path)
+            os.makedirs(dir_path, exist_ok=True)
+            created_dirs.add(dir_path)
+            with open(full_path, 'w') as f:
+                f.write('test content')
+        
+        # Set the base path to our temp directory
+        self.checker.base_path = Path(self.temp_dir)
+        
+        # Get available years
         years = self.checker.list_available_years()
-        self.assertEqual(years, [])
+        
+        # Should find both 2022 and 2023
+        self.assertEqual(set(years), {'2022', '2023'})
+        
+        # Clean up files and directories in reverse order (deepest first)
+        for file_path in test_files:
+            full_path = os.path.join(self.temp_dir, file_path)
+            os.remove(full_path)
+        
+        # Remove directories in reverse order of depth
+        dirs_by_depth = sorted(created_dirs, key=lambda x: x.count(os.sep), reverse=True)
+        for dir_path in dirs_by_depth:
+            os.rmdir(dir_path)
 
     def test_load_private_config_file_not_found(self):
         """Test loading private config when file doesn't exist."""

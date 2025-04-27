@@ -23,6 +23,7 @@ def test_cli_with_update_dates():
             mock_instance.update_yaml_with_dates.assert_called_once()
 
 def test_cli_with_base_path():
+    """Test CLI with base path without verbose flag."""
     with patch('sys.argv', ['tax-document-checker', '--base-path', '/test/path']):
         with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
             mock_instance = MagicMock()
@@ -31,7 +32,19 @@ def test_cli_with_base_path():
             mock_instance.check_year.return_value = True
             
             assert main() == 0
-            mock_checker.assert_called_once_with('/test/path')
+            mock_checker.assert_called_once_with('/test/path', verbose=False)
+
+def test_cli_with_base_path_verbose():
+    """Test CLI with base path and verbose flag."""
+    with patch('sys.argv', ['tax-document-checker', '--base-path', '/test/path', '--verbose']):
+        with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+            mock_instance = MagicMock()
+            mock_checker.return_value = mock_instance
+            mock_instance.list_available_years.return_value = ['2023']
+            mock_instance.check_year.return_value = True
+            
+            assert main() == 0
+            mock_checker.assert_called_once_with('/test/path', verbose=True)
 
 def test_cli_with_failed_check():
     with patch('sys.argv', ['tax-document-checker', '--year', '2023']):

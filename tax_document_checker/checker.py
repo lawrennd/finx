@@ -536,20 +536,29 @@ class TaxDocumentChecker:
         if self.verbose:
             print("Searching all directories for tax years...")
         
-        for path in self.base_path.glob("*"):
-            if path.is_dir():
-                try:
-                    # Extract year from directory name
-                    year_match = re.search(r'20\d{2}', str(path))
-                    if year_match:
-                        year = year_match.group()
-                        years.add(year)
+        # Search in all mapped directories
+        for category, dirs in self.directory_mapping.items():
+            for search_dir in dirs:
+                search_path = self.base_path / search_dir
+                if search_path.exists():
+                    try:
+                        # Search for PDF files in this directory and its subdirectories
+                        for file_path in search_path.glob('**/*.pdf'):
+                            if file_path.is_file():
+                                # Extract year from filename
+                                year_match = re.search(r'20\d{2}', file_path.name)
+                                if year_match:
+                                    year = year_match.group()
+                                    years.add(year)
+                                    if self.verbose:
+                                        print(f"Found year {year} in file: {file_path}")
+                    except (PermissionError, OSError) as e:
                         if self.verbose:
-                            print(f"Found year {year} in directory: {path}")
-                except (ValueError, TypeError):
+                            print(f"Error accessing directory {search_path}: {e}")
+                        continue
+                else:
                     if self.verbose:
-                        print(f"Error parsing directory name: {path}")
-                    continue
+                        print(f"Directory not found: {search_path}")
         
         if self.verbose:
             print(f"Total years found: {len(years)}")

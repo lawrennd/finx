@@ -1,0 +1,17 @@
+# Directory mapping configuration
+# This file stores where different document types are stored.
+
+directory_mapping:
+  employment: 
+    - payslips
+  investment_us: 
+    - investments/us
+  investment_uk: 
+    - investments/uk
+  bank_uk: 
+    - banking/uk
+  bank_us: 
+    - banking/us
+  additional: 
+    - tax/us
+    - tax/uk  # Additional documents can be in either tax directory 
