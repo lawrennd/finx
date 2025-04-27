@@ -261,17 +261,18 @@ class TaxDocumentChecker:
     def flatten_config(self):
         """Convert nested YAML config into flat dictionary of patterns with metadata."""
         patterns = {}
-        
+
         # Initialize empty lists for all categories
         patterns['employment'] = []
         patterns['investment_us'] = []
         patterns['investment_uk'] = []
         patterns['bank_uk'] = []
         patterns['bank_us'] = []
-        
+        patterns['additional'] = []
+
         if not self.config:
             return patterns
-        
+
         # Process employment patterns
         if 'employment' in self.config:
             for category in ['current', 'previous', 'generic']:
@@ -301,7 +302,7 @@ class TaxDocumentChecker:
                                 'frequency': employer['frequency'],
                                 'annual_document_type': employer.get('annual_document_type', 'P60')
                             })
-        
+
         # Process investment patterns
         if 'investment' in self.config:
             for region in ['us', 'uk']:
@@ -323,7 +324,7 @@ class TaxDocumentChecker:
                                 'name': account['name'],
                                 'frequency': account['frequency']
                             })
-        
+
         # Process bank account patterns
         if 'bank' in self.config:
             for region in ['uk', 'us']:
@@ -348,7 +349,7 @@ class TaxDocumentChecker:
                                         'account_type': account_type['name'],
                                         'frequency': account_type['frequency']
                                     })
-        
+
         # Process additional patterns
         if 'additional' in self.config:
             for category in ['generic']:
@@ -370,7 +371,7 @@ class TaxDocumentChecker:
                                 'name': doc_type['name'],
                                 'frequency': doc_type['frequency']
                             })
-        
+
         return patterns
 
     def get_year_from_path(self, path):
