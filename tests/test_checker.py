@@ -1242,5 +1242,34 @@ class TestTaxDocumentChecker(unittest.TestCase):
             self.assertIn('invalid-date_test.pdf', dates['Test Account']['files'])
             self.assertIn('2023-13-45_test.pdf', dates['Test Account']['files'])
 
+    def test_merge_configs_edge_cases(self):
+        """Test merging configurations with edge cases."""
+        # Test case 1: Merging lists with mixed types
+        self.checker.base_config = {
+            'investment': {
+                'uk': [{'name': 'UK Fund', 'patterns': ['pattern1']}],
+                'us': 'US Fund'  # String instead of list
+            }
+        }
+        self.checker.private_config = {
+            'investment': {
+                'uk': 'UK Fund 2',  # String instead of list
+                'us': [{'name': 'US Fund 2', 'patterns': ['pattern2']}]
+            }
+        }
+
+        # Merge configurations
+        merged = self.checker.merge_configs()
+
+        # Verify merging behavior
+        # Private config overwrites base config for 'uk'
+        self.assertEqual(len(merged['investment']['uk']), 1)
+        self.assertEqual(merged['investment']['uk'][0]['name'], 'UK Fund 2')
+        self.assertEqual(merged['investment']['uk'][0]['patterns'], [])
+        # Private config overwrites base config for 'us'
+        self.assertEqual(len(merged['investment']['us']), 1)
+        self.assertEqual(merged['investment']['us'][0]['name'], 'US Fund 2')
+        self.assertEqual(merged['investment']['us'][0]['patterns'], ['pattern2'])
+
 if __name__ == '__main__':
     unittest.main()
