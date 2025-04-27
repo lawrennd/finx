@@ -155,26 +155,36 @@ class TaxDocumentChecker:
                 if category not in merged:
                     merged[category] = self.private_config[category]
                 else:
-                    # Merge subcategories
-                    for subcategory in self.private_config[category]:
-                        if subcategory not in merged[category]:
-                            merged[category][subcategory] = self.private_config[category][subcategory]
+                    # Handle categories that are lists (like employment categories)
+                    if isinstance(self.private_config[category], list):
+                        if isinstance(merged[category], list):
+                            merged[category].extend(self.private_config[category])
                         else:
-                            # Handle both list and dictionary subcategories
-                            if isinstance(self.private_config[category][subcategory], list):
-                                if isinstance(merged[category][subcategory], list):
-                                    merged[category][subcategory].extend(self.private_config[category][subcategory])
-                                else:
-                                    merged[category][subcategory] = self.private_config[category][subcategory]
-                            elif isinstance(self.private_config[category][subcategory], dict):
-                                if isinstance(merged[category][subcategory], dict):
-                                    for key, value in self.private_config[category][subcategory].items():
-                                        if key in merged[category][subcategory] and isinstance(value, list):
-                                            merged[category][subcategory][key].extend(value)
+                            merged[category] = self.private_config[category]
+                    # Handle categories that are dictionaries (like additional patterns)
+                    elif isinstance(self.private_config[category], dict):
+                        if not isinstance(merged[category], dict):
+                            merged[category] = {}
+                        for key, value in self.private_config[category].items():
+                            if key not in merged[category]:
+                                merged[category][key] = value
+                            else:
+                                # If both are lists, extend
+                                if isinstance(value, list) and isinstance(merged[category][key], list):
+                                    merged[category][key].extend(value)
+                                # If both are dicts, merge recursively
+                                elif isinstance(value, dict) and isinstance(merged[category][key], dict):
+                                    for subkey, subvalue in value.items():
+                                        if subkey in merged[category][key] and isinstance(subvalue, list):
+                                            if isinstance(merged[category][key][subkey], list):
+                                                merged[category][key][subkey].extend(subvalue)
+                                            else:
+                                                merged[category][key][subkey] = subvalue
                                         else:
-                                            merged[category][subcategory][key] = value
+                                            merged[category][key][subkey] = subvalue
+                                # Otherwise, overwrite
                                 else:
-                                    merged[category][subcategory] = self.private_config[category][subcategory]
+                                    merged[category][key] = value
         
         return merged
 
