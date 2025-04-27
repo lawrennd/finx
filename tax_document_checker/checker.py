@@ -411,87 +411,69 @@ class TaxDocumentChecker:
         # Sort matches alphabetically (effectively by date since filenames start with date)
         return sorted(matches)
 
+    def list_available_years(self):
+        """List all available tax years in the base directory."""
+        years = set()
+        for path in self.base_path.glob("*"):
+            if path.is_dir():
+                try:
+                    # Extract year from directory name
+                    year_match = re.search(r'20\d{2}', str(path))
+                    if year_match:
+                        years.add(year_match.group())
+                except (ValueError, TypeError):
+                    continue
+        return sorted(list(years))
+
     def check_year(self, year):
-        """Check all required documents for a specific year."""
-        print(f"\nChecking documents for tax year {year}")
-        print("=" * 50)
+        """Check tax documents for a specific year."""
+        print(f"\nChecking documents for tax year {year}\n{'=' * 50}\n")
         
-        all_found = True
-        missing_files = defaultdict(list)
+        # Initialize results dictionary
+        results = {
+            'additional': [],
+            'bank_uk': [],
+            'bank_us': [],
+            'employment': [],
+            'investment_uk': [],
+            'investment_us': []
+        }
         
-        # Sort categories alphabetically
-        for category in sorted(self.required_patterns.keys()):
+        # Check each pattern
+        for category, patterns in self.required_patterns.items():
             print(f"\n{category.upper()}:")
-            # Sort patterns by name for consistent output
-            for pattern_info in sorted(self.required_patterns[category], key=lambda x: x['name']):
+            for pattern_info in patterns:
                 pattern = pattern_info['pattern']
                 name = pattern_info['name']
                 frequency = pattern_info['frequency']
-                annual_document_type = pattern_info.get('annual_document_type')
                 
-                # Skip if account is closed before this year or not started yet
-                account_info = self.account_dates.get(name)
-                if account_info:
-                    try:
-                        if account_info.get('end_date'):
-                            end_date = datetime.strptime(account_info['end_date'], '%Y-%m-%d')
-                            if end_date.year < int(year):
-                                print(f"⨯ Account '{name}' closed on {account_info['end_date']}")
-                                continue
-                        if account_info.get('start_date'):
-                            start_date = datetime.strptime(account_info['start_date'], '%Y-%m-%d')
-                            if start_date.year > int(year):
-                                print(f"⨯ Account '{name}' started on {account_info['start_date']}")
-                                continue
-                    except ValueError:
-                        # Invalid date format, ignore the date check
-                        pass
-                
+                # Find matching files
                 matches = self.find_files_matching_pattern(pattern, year, category)
                 
-                # Check for annual documents if specified
-                if annual_document_type:
-                    is_valid, found_count, expected_count = self.check_annual_documents(matches, year, annual_document_type)
-                else:
-                    is_valid, found_count, expected_count = self.validate_frequency(matches, frequency, year)
-                
                 if matches:
-                    if is_valid:
-                        print(f"✓ Found {found_count}/{expected_count} files for {name} ({frequency})")
-                    else:
-                        print(f"⚠ Found {found_count}/{expected_count} files for {name} ({frequency})")
-                        all_found = False
-                    for match in matches:
-                        print(f"  - {os.path.basename(match)}")
+                    results[category].extend(matches)
+                    print(f"✓ Found {len(matches)} files for {name} ({frequency})")
                 else:
                     print(f"✗ No files found for {name} ({frequency})")
-                    missing_files[category].append({
-                        'name': name,
-                        'frequency': frequency
-                    })
-                    all_found = False
         
-        if not all_found:
-            print("\nMISSING OR INCOMPLETE DOCUMENTS SUMMARY:")
-            print("=" * 50)
-            # Sort categories alphabetically in summary
-            for category in sorted(missing_files.keys()):
+        # Print summary of missing documents
+        print("\nMISSING OR INCOMPLETE DOCUMENTS SUMMARY:\n" + "=" * 50 + "\n")
+        for category, patterns in self.required_patterns.items():
+            missing = []
+            for pattern_info in patterns:
+                pattern = pattern_info['pattern']
+                name = pattern_info['name']
+                frequency = pattern_info['frequency']
+                
+                matches = self.find_files_matching_pattern(pattern, year, category)
+                if not matches:
+                    missing.append(f"- {name} ({frequency})")
+            
+            if missing:
                 print(f"\n{category.upper()}:")
-                # Sort missing items by name
-                for item in sorted(missing_files[category], key=lambda x: x['name']):
-                    print(f"- {item['name']} ({item['frequency']})")
+                print("\n".join(missing))
         
-        return all_found
-
-    def list_available_years(self):
-        """List all available tax years in the directory."""
-        years = set()
-        for root, dirs, _ in os.walk(self.base_path):
-            for dir_name in dirs:
-                year = self.get_year_from_path(dir_name)
-                if year:
-                    years.add(year)
-        return sorted(list(years))
+        return results
 
 def main():
     import argparse
