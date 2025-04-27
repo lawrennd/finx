@@ -23,8 +23,18 @@ FREQUENCY_EXPECTATIONS = {
 }
 
 class TaxDocumentChecker:
-    def __init__(self, base_path, config_file=None, private_config_file=None, directory_mapping_file=None):
+    def __init__(self, base_path, tax_year_path=None, config_file=None, private_config_file=None, directory_mapping_file=None):
+        """Initialize the tax document checker.
+        
+        Args:
+            base_path: Path to the root directory containing all tax documents
+            tax_year_path: Path to the specific tax year directory to check
+            config_file: Path to the base configuration file
+            private_config_file: Path to the private configuration file
+            directory_mapping_file: Path to the directory mapping configuration file
+        """
         self.base_path = Path(base_path)
+        self.tax_year_path = Path(tax_year_path) if tax_year_path else None
         self.config_file = config_file
         self.private_config_file = private_config_file
         self.directory_mapping_file = directory_mapping_file or Path(__file__).parent.parent.parent / "directory_mapping.yaml"
@@ -265,16 +275,15 @@ class TaxDocumentChecker:
         return f"{'_'.join(pattern_parts)}{extension}"
 
     def flatten_config(self):
-        """Convert nested YAML config into flat dictionary of patterns with metadata."""
-        patterns = {}
-
-        # Initialize empty lists for all categories
-        patterns['employment'] = []
-        patterns['investment_us'] = []
-        patterns['investment_uk'] = []
-        patterns['bank_uk'] = []
-        patterns['bank_us'] = []
-        patterns['additional'] = []
+        """Flatten the configuration into a list of patterns for each category."""
+        patterns = {
+            'employment': [],
+            'investment_us': [],
+            'investment_uk': [],
+            'bank_uk': [],
+            'bank_us': [],
+            'additional': []
+        }
 
         if not self.config:
             return patterns
@@ -284,67 +293,59 @@ class TaxDocumentChecker:
             for category in ['current', 'previous', 'generic']:
                 if category in self.config['employment']:
                     for employer in self.config['employment'][category]:
-                        if not employer.get('patterns'):
-                            continue
-                        for pattern in employer['patterns']:
-                            if pattern is None:
-                                continue
-                            # Handle both dictionary and string patterns
-                            if isinstance(pattern, dict):
-                                try:
-                                    full_pattern = self.build_pattern(
-                                        pattern.get('base', ''),
-                                        suffix=pattern.get('suffix'),
-                                        account_type=pattern.get('account_type'),
-                                        identifiers=pattern.get('identifiers')
-                                    )
-                                except (KeyError, TypeError):
-                                    continue
-                            else:
-                                full_pattern = pattern
-                            patterns['employment'].append({
-                                'pattern': full_pattern,
-                                'name': employer['name'],
-                                'frequency': employer['frequency'],
-                                'annual_document_type': employer.get('annual_document_type', 'P60')
-                            })
-
-        # Process investment patterns
-        if 'investment' in self.config:
-            for region in ['us', 'uk']:
-                if region in self.config['investment']:
-                    for account in self.config['investment'][region]:
-                        for pattern in account['patterns']:
-                            # Handle both dictionary and string patterns
-                            if isinstance(pattern, dict):
-                                full_pattern = self.build_pattern(
-                                    pattern.get('base', ''),
-                                    suffix=pattern.get('suffix'),
-                                    account_type=pattern.get('account_type'),
-                                    identifiers=pattern.get('identifiers')
-                                )
-                            else:
-                                full_pattern = pattern
-                            patterns[f'investment_{region}'].append({
-                                'pattern': full_pattern,
-                                'name': account['name'],
-                                'frequency': account['frequency']
-                            })
-
-        # Process bank account patterns
-        if 'bank' in self.config:
-            for region in ['uk', 'us']:
-                if region in self.config['bank']:
-                    for bank in self.config['bank'][region]:
-                        if 'account_types' in bank:
-                            for account_type in bank['account_types']:
-                                for pattern in account_type['patterns']:
-                                    # Handle both dictionary and string patterns
+                        if 'patterns' in employer and employer['patterns']:
+                            for pattern in employer['patterns']:
+                                if pattern is not None:
                                     if isinstance(pattern, dict):
                                         full_pattern = self.build_pattern(
                                             pattern.get('base', ''),
                                             suffix=pattern.get('suffix'),
-                                            account_type=account_type['name'],
+                                            identifiers=pattern.get('identifiers')
+                                        )
+                                    else:
+                                        full_pattern = pattern
+                                    patterns['employment'].append({
+                                        'pattern': full_pattern,
+                                        'name': employer['name'],
+                                        'frequency': employer['frequency']
+                                    })
+
+        # Process investment patterns
+        if 'investment' in self.config:
+            for region in ['uk', 'us']:
+                if region in self.config['investment']:
+                    for account in self.config['investment'][region]:
+                        if 'patterns' in account and account['patterns']:
+                            for pattern in account['patterns']:
+                                if pattern is not None:
+                                    if isinstance(pattern, dict):
+                                        full_pattern = self.build_pattern(
+                                            pattern.get('base', ''),
+                                            suffix=pattern.get('suffix'),
+                                            account_type=pattern.get('account_type'),
+                                            identifiers=pattern.get('identifiers')
+                                        )
+                                    else:
+                                        full_pattern = pattern
+                                    patterns[f'investment_{region}'].append({
+                                        'pattern': full_pattern,
+                                        'name': account['name'],
+                                        'frequency': account['frequency']
+                                    })
+
+        # Process bank patterns
+        if 'bank' in self.config:
+            for region in ['uk', 'us']:
+                if region in self.config['bank']:
+                    for bank in self.config['bank'][region]:
+                        if 'patterns' in bank and bank['patterns']:
+                            for pattern in bank['patterns']:
+                                if pattern is not None:
+                                    if isinstance(pattern, dict):
+                                        full_pattern = self.build_pattern(
+                                            pattern.get('base', ''),
+                                            suffix=pattern.get('suffix'),
+                                            account_type=pattern.get('account_type'),
                                             identifiers=pattern.get('identifiers')
                                         )
                                     else:
@@ -352,30 +353,21 @@ class TaxDocumentChecker:
                                     patterns[f'bank_{region}'].append({
                                         'pattern': full_pattern,
                                         'name': bank['name'],
-                                        'account_type': account_type['name'],
-                                        'frequency': account_type['frequency']
+                                        'frequency': bank.get('frequency', 'monthly')
                                     })
 
         # Process additional patterns
         if 'additional' in self.config:
-            for category in ['generic']:
-                if category in self.config['additional']:
-                    for doc_type in self.config['additional'][category]:
-                        for pattern in doc_type['patterns']:
-                            # Handle both dictionary and string patterns
-                            if isinstance(pattern, dict):
-                                full_pattern = self.build_pattern(
-                                    pattern.get('base', ''),
-                                    suffix=pattern.get('suffix'),
-                                    account_type=pattern.get('account_type'),
-                                    identifiers=pattern.get('identifiers')
-                                )
-                            else:
-                                full_pattern = pattern
+            if 'patterns' in self.config['additional']:
+                for doc_type, info in self.config['additional']['patterns'].items():
+                    if isinstance(info, dict):
+                        pattern = info.get('base', '')
+                        if pattern:
+                            full_pattern = self.build_pattern(pattern)
                             patterns['additional'].append({
                                 'pattern': full_pattern,
-                                'name': doc_type['name'],
-                                'frequency': doc_type['frequency']
+                                'name': doc_type,
+                                'frequency': info.get('frequency', 'yearly')
                             })
 
         return patterns
@@ -398,7 +390,7 @@ class TaxDocumentChecker:
         
         for search_dir in search_dirs:
             # Construct the full path to search
-            search_path = Path(self.base_path) / search_dir
+            search_path = self.base_path / search_dir
             
             # Skip if directory doesn't exist
             if not search_path.exists():
@@ -420,6 +412,18 @@ class TaxDocumentChecker:
     def list_available_years(self):
         """List all available tax years in the base directory."""
         years = set()
+        
+        # If a specific tax year path is provided, use that
+        if self.tax_year_path:
+            try:
+                year_match = re.search(r'20\d{2}', str(self.tax_year_path))
+                if year_match:
+                    years.add(year_match.group())
+            except (ValueError, TypeError):
+                pass
+            return sorted(list(years))
+        
+        # Otherwise, search all directories
         for path in self.base_path.glob("*"):
             if path.is_dir():
                 try:
@@ -435,15 +439,8 @@ class TaxDocumentChecker:
         """Check tax documents for a specific year."""
         print(f"\nChecking documents for tax year {year}\n{'=' * 50}\n")
         
-        # Initialize results dictionary
-        results = {
-            'additional': [],
-            'bank_uk': [],
-            'bank_us': [],
-            'employment': [],
-            'investment_uk': [],
-            'investment_us': []
-        }
+        # Initialize results dictionary with all categories from required_patterns
+        results = {category: [] for category in self.required_patterns.keys()}
         
         # Check each pattern
         for category, patterns in self.required_patterns.items():
