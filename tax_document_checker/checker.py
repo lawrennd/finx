@@ -551,15 +551,22 @@ class TaxDocumentChecker:
                                                         account_type=pattern.get('account_type'),
                                                         identifiers=pattern.get('identifiers')
                                                     )
+                                                    pattern_dict = {
+                                                        'pattern': full_pattern,
+                                                        'name': f"{bank['name']} - {account_type['name']}",
+                                                        'frequency': account_type.get('frequency', bank.get('frequency', 'monthly')),
+                                                        'start_date': pattern.get('start_date', account_type.get('start_date', bank.get('start_date'))),
+                                                        'end_date': pattern.get('end_date', account_type.get('end_date', bank.get('end_date')))
+                                                    }
                                                 else:
-                                                    full_pattern = pattern
-                                                patterns[f'bank_{region}'].append({
-                                                    'pattern': full_pattern,
-                                                    'name': f"{bank['name']} - {account_type['name']}",
-                                                    'frequency': account_type.get('frequency', bank.get('frequency', 'monthly')),
-                                                    'start_date': pattern.get('start_date'),
-                                                    'end_date': pattern.get('end_date')
-                                                })
+                                                    pattern_dict = {
+                                                        'pattern': pattern,
+                                                        'name': f"{bank['name']} - {account_type['name']}",
+                                                        'frequency': account_type.get('frequency', bank.get('frequency', 'monthly')),
+                                                        'start_date': account_type.get('start_date', bank.get('start_date')),
+                                                        'end_date': account_type.get('end_date', bank.get('end_date'))
+                                                    }
+                                                patterns[f'bank_{region}'].append(pattern_dict)
                             # Process patterns directly on bank if present
                             elif 'patterns' in bank:
                                 for pattern in bank['patterns']:

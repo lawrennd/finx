@@ -1086,5 +1086,141 @@ class TestTaxDocumentChecker(unittest.TestCase):
             self.assertTrue(any("MISSING OR INCOMPLETE DOCUMENTS SUMMARY" in msg for msg in log_messages))
             self.assertTrue(any("- test-company (monthly)" in msg for msg in log_messages))
 
+    def test_find_config_file(self):
+        """Test finding configuration files in various locations."""
+        # Create a test file in the temp directory
+        test_file = os.path.join(self.temp_dir, 'test_config.yml')
+        with open(test_file, 'w') as f:
+            f.write('test: value')
+        
+        # Test finding the file in the base directory
+        result = self.checker.find_config_file('test_config.yml')
+        self.assertEqual(str(result), test_file)
+        
+        # Test with a non-existent file
+        result = self.checker.find_config_file('nonexistent.yml')
+        self.assertIsNone(result)
+        
+        # Test with a checker that has no base_path
+        checker_no_base = TaxDocumentChecker(config={'test': 'value'})  # Pass direct config to avoid file operations
+        result = checker_no_base.find_config_file('test_config.yml')
+        self.assertIsNone(result)
+
+    def test_validate_frequency_with_invalid_dates(self):
+        """Test validate_frequency with invalid date formats in pattern_info."""
+        # Create test files
+        test_files = [
+            os.path.join(self.temp_dir, '2023-01-01_test.pdf'),
+            os.path.join(self.temp_dir, '2023-02-01_test.pdf')
+        ]
+        for file in test_files:
+            with open(file, 'w') as f:
+                f.write('test content')
+        
+        # Test with invalid date format in pattern_info
+        pattern_info = {
+            'start_date': 'invalid-date',
+            'end_date': '2023-12-31'
+        }
+        
+        # Should handle the error gracefully and fall back to default expectations
+        is_valid, count, expected = self.checker.validate_frequency(
+            test_files, 'monthly', '2023', pattern_info
+        )
+        
+        # Should still validate correctly based on the number of files
+        self.assertEqual(count, 2)
+        self.assertEqual(expected, 12)  # Default for monthly
+
+    def test_find_files_matching_pattern_with_verbose_logging(self):
+        """Test find_files_matching_pattern with verbose logging enabled."""
+        # Create a test file
+        test_dir = os.path.join(self.temp_dir, 'test_dir')
+        os.makedirs(test_dir)
+        test_file = os.path.join(test_dir, '2023-01-01_test.pdf')
+        with open(test_file, 'w') as f:
+            f.write('test content')
+        
+        # Set up directory mapping
+        self.checker.directory_mapping = {
+            'test_category': ['test_dir']
+        }
+        self.checker.verbose = True
+        
+        # Test with logging enabled
+        with self.assertLogs(level='DEBUG') as log:
+            matches = self.checker.find_files_matching_pattern(
+                r'\d{4}-\d{2}-\d{2}_test\.pdf',
+                year='2023',
+                category='test_category'
+            )
+            
+            # Verify log messages
+            log_messages = [record.message for record in log.records]
+            self.assertTrue(any("Searching for pattern" in msg for msg in log_messages))
+            self.assertTrue(any("Search directories" in msg for msg in log_messages))
+            self.assertTrue(any("Searching in directory" in msg for msg in log_messages))
+            self.assertTrue(any("Match found" in msg for msg in log_messages))
+            self.assertTrue(any("Total matches found" in msg for msg in log_messages))
+            
+            # Verify the file was found
+            self.assertEqual(len(matches), 1)
+            self.assertTrue(matches[0].endswith('2023-01-01_test.pdf'))
+
+    def test_flatten_config_bank_account_types(self):
+        """Test flattening configuration with bank account types."""
+        self.checker.config = {
+            'bank': {
+                'uk': [{
+                    'name': 'Test Bank',
+                    'account_types': [
+                        {
+                            'name': 'Savings',
+                            'frequency': 'monthly',
+                            'patterns': [
+                                {
+                                    'base': 'test-bank',
+                                    'account_type': 'savings',
+                                    'suffix': 'statement',
+                                    'start_date': '2023-01-01',
+                                    'end_date': '2023-12-31'
+                                }
+                            ]
+                        },
+                        {
+                            'name': 'Current',
+                            'frequency': 'monthly',
+                            'patterns': ['static-pattern'],  # Test direct pattern string
+                            'start_date': '2023-01-01',
+                            'end_date': '2023-12-31'
+                        }
+                    ]
+                }]
+            }
+        }
+        
+        patterns = self.checker.flatten_config()
+        
+        # Verify bank patterns
+        self.assertIn('bank_uk', patterns)
+        bank_patterns = patterns['bank_uk']
+        
+        # Check first account type (Savings)
+        savings_pattern = next(p for p in bank_patterns if 'Savings' in p['name'])
+        self.assertEqual(savings_pattern['name'], 'Test Bank - Savings')
+        self.assertEqual(savings_pattern['frequency'], 'monthly')
+        self.assertIn('test-bank', savings_pattern['pattern'])
+        self.assertIn('savings', savings_pattern['pattern'])
+        self.assertIn('statement', savings_pattern['pattern'])
+        self.assertEqual(savings_pattern['start_date'], '2023-01-01')
+        self.assertEqual(savings_pattern['end_date'], '2023-12-31')
+        
+        # Check second account type (Current)
+        current_pattern = next(p for p in bank_patterns if 'Current' in p['name'])
+        self.assertEqual(current_pattern['name'], 'Test Bank - Current')
+        self.assertEqual(current_pattern['pattern'], 'static-pattern')
+        self.assertEqual(current_pattern['start_date'], '2023-01-01')
+        self.assertEqual(current_pattern['end_date'], '2023-12-31')
+
 if __name__ == '__main__':
     unittest.main()
