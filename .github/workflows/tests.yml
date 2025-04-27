@@ -44,7 +44,7 @@ jobs:
     
     - name: Run tests with coverage
       run: |
-        poetry run pytest --cov=tax_document_checker --cov-report=xml
+        poetry run pytest tests/ --cov=tax_document_checker --cov-report=xml --cov-report=term-missing
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
