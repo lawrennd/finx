@@ -1174,5 +1174,70 @@ class TestTaxDocumentChecker(unittest.TestCase):
         """Test handling of directory access errors."""
         pass
 
+    def test_load_base_config_yaml_error(self):
+        """Test handling of YAML parsing errors in base configuration."""
+        # Create a temporary file with invalid YAML
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
+            f.write("invalid: yaml: :")
+            temp_path = f.name
+
+        try:
+            # Test loading invalid YAML
+            with patch('builtins.print') as mock_print:
+                checker = TaxDocumentChecker(base_path=self.temp_dir, config_file=temp_path)
+                config = checker.load_base_config()
+                self.assertEqual(config, {})
+                mock_print.assert_called_with(
+                    f'Error parsing base configuration file: mapping values are not allowed here\n'
+                    f'  in "{temp_path}", line 1, column 14'
+                )
+        finally:
+            os.unlink(temp_path)
+
+    def test_load_base_config_file_not_found(self):
+        """Test handling of missing base configuration file."""
+        # Mock the file operations
+        with patch('builtins.print') as mock_print:
+            with patch('pathlib.Path.exists', return_value=False):
+                with patch('os.path.exists', return_value=False):
+                    checker = TaxDocumentChecker(base_path=self.temp_dir)
+                    # Get the actual path being used
+                    expected_path = os.path.join(self.temp_dir, 'tax_document_patterns_base.yml')
+                    config = checker.load_base_config()
+                    self.assertEqual(config, {})
+                    mock_print.assert_called_with(f'Warning: Base configuration file not found at {expected_path}')
+
+    def test_analyze_account_dates_with_invalid_dates(self):
+        """Test analyzing account dates with invalid date formats."""
+        # Set up test data with invalid date formats
+        self.checker.required_patterns = {
+            'test': [{
+                'pattern': r'\d{4}-\d{2}-\d{2}_test\.pdf',
+                'name': 'Test Account',
+                'frequency': 'monthly'
+            }]
+        }
+
+        # Create test files with invalid dates
+        test_files = [
+            'invalid-date_test.pdf',  # Invalid date format
+            '2023-13-45_test.pdf',    # Invalid month and day
+            '2023-01-01_test.pdf'     # Valid date for comparison
+        ]
+
+        # Mock find_files_matching_pattern to return our test files
+        with patch.object(self.checker, 'find_files_matching_pattern') as mock_find:
+            mock_find.return_value = [os.path.join('/test', f) for f in test_files]
+            
+            # Run the analysis
+            dates = self.checker.analyze_account_dates()
+            
+            # Verify that only valid dates were processed
+            self.assertIn('Test Account', dates)
+            self.assertEqual(dates['Test Account']['start_date'], '2023-01-01')
+            self.assertEqual(dates['Test Account']['end_date'], '2023-01-01')
+            self.assertEqual(len(dates['Test Account']['files']), 1)
+            self.assertIn('2023-01-01_test.pdf', dates['Test Account']['files'])
+
 if __name__ == '__main__':
     unittest.main()
