@@ -37,8 +37,10 @@ jobs:
     
     - name: Install dependencies
       run: |
+        poetry config virtualenvs.in-project true
         poetry install --no-interaction
-        poetry add --group dev pytest-cov@^4.1.0
+        poetry show
+        poetry run pip install pytest-cov==4.1.0
     
     - name: Run tests with coverage
       run: |
