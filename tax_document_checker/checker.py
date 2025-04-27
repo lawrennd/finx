@@ -33,9 +33,10 @@ FREQUENCY_EXPECTATIONS = {
 }
 
 class TaxDocumentChecker:
-    def __init__(self, base_path, config_file=None):
+    def __init__(self, base_path, config_file=None, private_config_file=None):
         self.base_path = Path(base_path)
         self.config_file = config_file
+        self.private_config_file = private_config_file
         self.base_config = self.load_base_config()
         self.private_config = self.load_private_config()
         self.config = self.merge_configs()
@@ -49,34 +50,28 @@ class TaxDocumentChecker:
                 with open(self.config_file, 'r') as f:
                     try:
                         return yaml.safe_load(f)
-                    except yaml.YAMLError:
-                        print(f"Warning: Invalid YAML in configuration file at {self.config_file}")
+                    except yaml.YAMLError as e:
+                        print(f"Error parsing base configuration file: {e}")
                         return {}
             except FileNotFoundError:
-                print(f"Warning: Configuration file not found at {self.config_file}")
+                print(f"Warning: Base configuration file not found at {self.config_file}")
                 return {}
-        
-        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tax_document_patterns_base.yaml')
-        try:
-            with open(config_path, 'r') as f:
-                try:
-                    return yaml.safe_load(f)
-                except yaml.YAMLError:
-                    print(f"Warning: Invalid YAML in base configuration file at {config_path}")
-                    return {}
-        except FileNotFoundError:
-            print(f"Warning: Base configuration file not found at {config_path}")
-            return {}
+        return {}
 
     def load_private_config(self):
         """Load private configuration from YAML file."""
-        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tax_document_patterns_private.yaml')
-        try:
-            with open(config_path, 'r') as f:
-                return yaml.safe_load(f)
-        except FileNotFoundError:
-            print(f"Warning: Private configuration file not found at {config_path}")
-            return {}
+        if self.private_config_file:
+            try:
+                with open(self.private_config_file, 'r') as f:
+                    try:
+                        return yaml.safe_load(f)
+                    except yaml.YAMLError as e:
+                        print(f"Error parsing private configuration file: {e}")
+                        return {}
+            except FileNotFoundError:
+                print(f"Warning: Private configuration file not found at {self.private_config_file}")
+                return {}
+        return {}
 
     def merge_configs(self):
         """Merge base and private configurations."""
