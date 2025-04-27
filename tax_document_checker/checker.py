@@ -13,16 +13,6 @@ STANDARD_PATTERNS = {
     'extension': r'\.pdf$'
 }
 
-# Directory mapping for document types
-DIRECTORY_MAPPING = {
-    'employment': ['UK-payslips'],
-    'investment_us': ['US-investments'],
-    'investment_uk': ['UK-investments'],
-    'bank_uk': ['UK-savings'],
-    'bank_us': ['US-savings'],
-    'additional': ['US-tax', 'UK-tax']  # Additional documents can be in either tax directory
-}
-
 # Expected number of files per year based on frequency
 FREQUENCY_EXPECTATIONS = {
     'monthly': 12,
@@ -33,12 +23,14 @@ FREQUENCY_EXPECTATIONS = {
 }
 
 class TaxDocumentChecker:
-    def __init__(self, base_path, config_file=None, private_config_file=None):
+    def __init__(self, base_path, config_file=None, private_config_file=None, directory_mapping_file=None):
         self.base_path = Path(base_path)
         self.config_file = config_file
         self.private_config_file = private_config_file
+        self.directory_mapping_file = directory_mapping_file or Path(__file__).parent.parent.parent / "directory_mapping.yaml"
         self.base_config = self.load_base_config()
         self.private_config = self.load_private_config()
+        self.directory_mapping = self.load_directory_mapping()
         self.config = self.merge_configs()
         self.required_patterns = self.flatten_config()
         self.account_dates = self.analyze_account_dates()
@@ -72,6 +64,20 @@ class TaxDocumentChecker:
                 print(f"Warning: Private configuration file not found at {self.private_config_file}")
                 return {}
         return {}
+
+    def load_directory_mapping(self):
+        """Load directory mapping from YAML file."""
+        try:
+            with open(self.directory_mapping_file, 'r') as f:
+                try:
+                    config = yaml.safe_load(f)
+                    return config.get('directory_mapping', {})
+                except yaml.YAMLError as e:
+                    print(f"Error parsing directory mapping file: {e}")
+                    return {}
+        except FileNotFoundError:
+            print(f"Warning: Directory mapping file not found at {self.directory_mapping_file}")
+            return {}
 
     def merge_configs(self):
         """Merge base and private configurations."""
@@ -384,7 +390,7 @@ class TaxDocumentChecker:
         matches = []
         
         # Get relevant directories for this category
-        search_dirs = DIRECTORY_MAPPING.get(category, [])
+        search_dirs = self.directory_mapping.get(category, [])
         
         # If no specific directories are mapped, search everywhere
         if not search_dirs:
