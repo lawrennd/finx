@@ -1,0 +1,134 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Testing Guidelines for Tax Document Checker
+
+## Coverage Goals and Priorities
+
+### Priority Levels for Test Coverage
+
+1. **Critical (Must Test)**
+   - Core business logic for tax document validation
+   - Document pattern matching and verification
+   - Date handling for tax periods
+   - Configuration merging that affects document validation
+   - Data integrity checks
+
+2. **Important (Should Test)**
+   - Configuration loading and parsing
+   - File pattern generation
+   - Document frequency validation
+   - Year-based document checks
+   - Account status validation
+
+3. **Optional (Nice to Have)**
+   - Standard library error handlers
+   - Non-critical warning messages
+   - Graceful fallbacks with safe defaults
+   - Debug logging paths
+
+### Error Handler Testing Guidelines
+
+1. **Always Test When**:
+   - The error affects tax document validation accuracy
+   - The error could lead to missing required documents
+   - The error impacts user data or configurations
+   - Recovery procedures are business-critical
+   - Custom error handling logic is implemented
+
+2. **Consider Testing When**:
+   - Multiple error conditions need different handling
+   - Error state affects program flow
+   - Error messages are critical for user understanding
+   - Configuration errors could affect validation
+
+3. **May Skip Testing When**:
+   - Using standard library error handling
+   - Errors lead to simple, safe defaults
+   - Error only affects logging or debugging
+   - Standard IO operations with typical error handling
+
+## Test Coverage Thresholds
+
+- **Minimum Coverage**: 80%
+- **Target Coverage**: 90%
+- **Ideal Coverage**: 95%
+
+### Coverage Exceptions
+
+The following areas may be excluded from coverage requirements:
+
+1. Standard library error handlers
+2. Debug logging statements
+3. Development-only code paths
+4. Platform-specific code branches
+
+## Testing Best Practices
+
+1. **Test Data**
+   - Use realistic document patterns
+   - Include edge cases in date formats
+   - Test across tax year boundaries
+   - Include various document frequencies
+
+2. **Configuration Testing**
+   - Test both base and private configs
+   - Verify config merging edge cases
+   - Test invalid configuration handling
+   - Verify backward compatibility
+
+3. **Document Validation**
+   - Test all supported document types
+   - Verify frequency requirements
+   - Test date extraction and validation
+   - Check pattern matching accuracy
+
+4. **Error Handling**
+   - Focus on business-critical errors
+   - Verify error recovery paths
+   - Test configuration error handling
+   - Validate user feedback mechanisms
+
+## Test Data Management
+
+### Using Temporary Files
+
+The project uses Python's `tempfile` module for managing test data. This approach provides several benefits:
+
+1. **Clean Test Environment**
+   - Each test runs in an isolated environment
+   - No interference between test cases
+   - Automatic cleanup after tests complete
+
+2. **Best Practices**
+   - Use `tempfile.TemporaryDirectory()` for directory-based tests
+   - Use `tempfile.NamedTemporaryFile()` for single file tests
+   - Always use context managers (`with` statements)
+   - Never assume file paths or names will persist
+
+3. **Example Implementation**
+```python
+import tempfile
+import os
+
+def test_document_processing():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create test files
+        test_file = os.path.join(temp_dir, "test_doc.pdf")
+        with open(test_file, 'wb') as f:
+            f.write(test_data)
+        
+        # Run test logic
+        result = process_document(test_file)
+        
+        # Assertions
+        assert result.is_valid
+```
+
+4. **Benefits**
+   - Tests are more reliable
+   - No cleanup code needed
+   - Tests can run in parallel
+   - No risk of corrupting real tax documents
