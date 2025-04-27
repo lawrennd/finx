@@ -290,25 +290,35 @@ class TaxDocumentChecker:
 
         # Process employment patterns
         if 'employment' in self.config:
-            for category in ['current', 'previous', 'generic']:
-                if category in self.config['employment']:
-                    for employer in self.config['employment'][category]:
-                        if 'patterns' in employer and employer['patterns']:
-                            for pattern in employer['patterns']:
-                                if pattern is not None:
-                                    if isinstance(pattern, dict):
-                                        full_pattern = self.build_pattern(
-                                            pattern.get('base', ''),
-                                            suffix=pattern.get('suffix'),
-                                            identifiers=pattern.get('identifiers')
-                                        )
-                                    else:
-                                        full_pattern = pattern
-                                    patterns['employment'].append({
-                                        'pattern': full_pattern,
-                                        'name': employer['name'],
-                                        'frequency': employer['frequency']
-                                    })
+            # Process all employment records regardless of category
+            for category in self.config['employment']:
+                for employer in self.config['employment'][category]:
+                    if 'patterns' in employer and employer['patterns']:
+                        for pattern in employer['patterns']:
+                            if pattern is not None:
+                                if isinstance(pattern, dict):
+                                    full_pattern = self.build_pattern(
+                                        pattern.get('base', ''),
+                                        suffix=pattern.get('suffix'),
+                                        identifiers=pattern.get('identifiers')
+                                    )
+                                else:
+                                    full_pattern = pattern
+                                
+                                # Get start and end dates from account_dates if available
+                                start_date = None
+                                end_date = None
+                                if employer['name'] in self.account_dates:
+                                    start_date = self.account_dates[employer['name']]['start_date']
+                                    end_date = self.account_dates[employer['name']]['end_date']
+                                
+                                patterns['employment'].append({
+                                    'pattern': full_pattern,
+                                    'name': employer['name'],
+                                    'frequency': employer['frequency'],
+                                    'start_date': start_date,
+                                    'end_date': end_date
+                                })
 
         # Process investment patterns
         if 'investment' in self.config:
@@ -450,6 +460,24 @@ class TaxDocumentChecker:
                 name = pattern_info['name']
                 frequency = pattern_info['frequency']
                 
+                # For employment category, check if the record is current for this year
+                if category == 'employment':
+                    start_date = pattern_info.get('start_date')
+                    end_date = pattern_info.get('end_date')
+                    
+                    # Skip if this employment record is not active during this year
+                    if start_date and end_date:
+                        try:
+                            start_year = int(start_date.split('-')[0])
+                            end_year = int(end_date.split('-')[0])
+                            
+                            if int(year) < start_year or int(year) > end_year:
+                                print(f"⏭️ Skipping {name} ({frequency}) - not active in {year} (active from {start_year} to {end_year})")
+                                continue
+                        except (ValueError, IndexError):
+                            # If we can't parse the dates, just proceed with checking the files
+                            pass
+                
                 # Find matching files
                 matches = self.find_files_matching_pattern(pattern, year, category)
                 
@@ -467,6 +495,23 @@ class TaxDocumentChecker:
                 pattern = pattern_info['pattern']
                 name = pattern_info['name']
                 frequency = pattern_info['frequency']
+                
+                # For employment category, check if the record is current for this year
+                if category == 'employment':
+                    start_date = pattern_info.get('start_date')
+                    end_date = pattern_info.get('end_date')
+                    
+                    # Skip if this employment record is not active during this year
+                    if start_date and end_date:
+                        try:
+                            start_year = int(start_date.split('-')[0])
+                            end_year = int(end_date.split('-')[0])
+                            
+                            if int(year) < start_year or int(year) > end_year:
+                                continue
+                        except (ValueError, IndexError):
+                            # If we can't parse the dates, just proceed with checking the files
+                            pass
                 
                 matches = self.find_files_matching_pattern(pattern, year, category)
                 if not matches:

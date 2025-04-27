@@ -93,6 +93,26 @@ class TestTaxDocumentChecker(unittest.TestCase):
         finally:
             os.unlink(config_path)
 
+    def test_load_private_config_yaml_error(self):
+        """Test handling of YAML parsing errors in private configuration."""
+        # Create a temporary file with invalid YAML
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write("invalid: yaml: :")
+            temp_path = f.name
+
+        try:
+            # Test loading invalid YAML
+            with patch('builtins.print') as mock_print:
+                checker = TaxDocumentChecker(base_path=self.temp_dir, private_config_file=temp_path)
+                config = checker.load_private_config()
+                self.assertEqual(config, {})
+                mock_print.assert_called_with(
+                    f'Error parsing private configuration file: mapping values are not allowed here\n'
+                    f'  in "{temp_path}", line 1, column 14'
+                )
+        finally:
+            os.unlink(temp_path)
+
     def test_merge_configs(self):
         """Test merging base and private configurations."""
         self.checker.base_config = {'base': {'sub': ['item1']}}
@@ -657,6 +677,188 @@ class TestTaxDocumentChecker(unittest.TestCase):
         }
         patterns = self.checker.flatten_config()
         self.assertEqual(patterns, expected_empty)
+
+    def test_load_directory_mapping_yaml_error(self):
+        """Test handling of YAML parsing errors in directory mapping."""
+        # Create a temporary file with invalid YAML
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write("invalid: yaml: :")
+            temp_path = f.name
+
+        try:
+            # Test loading invalid YAML
+            with patch('builtins.print') as mock_print:
+                checker = TaxDocumentChecker(base_path=self.temp_dir, directory_mapping_file=temp_path)
+                mapping = checker.load_directory_mapping()
+                self.assertEqual(mapping, {})
+                mock_print.assert_called_with(
+                    f'Error parsing directory mapping file: mapping values are not allowed here\n'
+                    f'  in "{temp_path}", line 1, column 14'
+                )
+        finally:
+            os.unlink(temp_path)
+
+    def test_merge_configs_with_different_types(self):
+        """Test merging configurations with different data types."""
+        self.checker.base_config = {
+            'test': {
+                'list': ['item1'],
+                'dict': {'key1': 'value1'}
+            }
+        }
+        self.checker.private_config = {
+            'test': {
+                'list': ['item2'],
+                'dict': {'key2': 'value2'}
+            }
+        }
+        
+        merged = self.checker.merge_configs()
+        
+        # Verify merged structure
+        self.assertEqual(merged['test']['list'], ['item1', 'item2'])
+        self.assertEqual(merged['test']['dict'], {'key1': 'value1', 'key2': 'value2'})
+
+    def test_find_files_matching_pattern_with_category_mapping(self):
+        """Test finding files with category-specific directory mapping."""
+        # Set up directory mapping
+        self.checker.directory_mapping = {
+            'test_category': ['test_dir']
+        }
+        
+        # Create test directory and files
+        test_dir = os.path.join(self.temp_dir, 'test_dir')
+        os.makedirs(test_dir)
+        
+        # Create a file that matches the pattern
+        with open(os.path.join(test_dir, '2023-01-01_test.pdf'), 'w') as f:
+            f.write('test')
+        
+        # Create a file that doesn't match the pattern
+        with open(os.path.join(test_dir, 'not_a_match.pdf'), 'w') as f:
+            f.write('test')
+        
+        # Find files matching the pattern
+        matches = self.checker.find_files_matching_pattern(
+            r'\d{4}-\d{2}-\d{2}_test\.pdf',
+            year='2023',
+            category='test_category'
+        )
+        
+        # Verify results
+        self.assertEqual(len(matches), 1)
+        self.assertTrue(matches[0].endswith('2023-01-01_test.pdf'))
+
+    def test_check_year_with_date_based_filtering(self):
+        """Test checking a year with date-based filtering for employment records."""
+        # Set up required patterns with start and end dates
+        self.checker.required_patterns = {
+            'employment': [
+                {
+                    'pattern': r'\d{4}-\d{2}-\d{2}_company1\.pdf',
+                    'name': 'Company1',
+                    'frequency': 'monthly',
+                    'start_date': '2022-01-01',
+                    'end_date': '2022-12-31'
+                },
+                {
+                    'pattern': r'\d{4}-\d{2}-\d{2}_company2\.pdf',
+                    'name': 'Company2',
+                    'frequency': 'monthly',
+                    'start_date': '2023-01-01',
+                    'end_date': '2023-12-31'
+                }
+            ]
+        }
+        
+        # Mock find_files_matching_pattern to return different results
+        with patch.object(self.checker, 'find_files_matching_pattern') as mock_find:
+            # Company1 should be skipped for 2023
+            # Company2 should be checked for 2023
+            mock_find.return_value = ['/test/2023-01-01_company2.pdf']
+            
+            with patch('builtins.print') as mock_print:
+                result = self.checker.check_year('2023')
+                
+                # Verify that Company1 was skipped
+                mock_print.assert_any_call("⏭️ Skipping Company1 (monthly) - not active in 2023 (active from 2022 to 2022)")
+                
+                # Verify that Company2 was checked
+                mock_print.assert_any_call("✓ Found 1 files for Company2 (monthly)")
+                
+                # Verify results
+                self.assertEqual(result['employment'], ['/test/2023-01-01_company2.pdf'])
+
+    def test_find_files_matching_pattern_with_nonexistent_directory(self):
+        """Test finding files when the directory doesn't exist."""
+        # Set up directory mapping
+        self.checker.directory_mapping = {
+            'test_category': ['nonexistent_dir']
+        }
+        
+        # Find files matching the pattern
+        matches = self.checker.find_files_matching_pattern(
+            r'\d{4}-\d{2}-\d{2}_test\.pdf',
+            year='2023',
+            category='test_category'
+        )
+        
+        # Verify results - should be empty since directory doesn't exist
+        self.assertEqual(len(matches), 0)
+
+    def test_check_year_with_invalid_dates(self):
+        """Test checking a year with invalid dates in employment records."""
+        # Set up required patterns with invalid dates
+        self.checker.required_patterns = {
+            'employment': [
+                {
+                    'pattern': r'\d{4}-\d{2}-\d{2}_company\.pdf',
+                    'name': 'Company',
+                    'frequency': 'monthly',
+                    'start_date': '9999-01-01',  # Future date
+                    'end_date': '9999-12-31'     # Future date
+                }
+            ]
+        }
+        
+        # Mock find_files_matching_pattern to return some results
+        with patch.object(self.checker, 'find_files_matching_pattern') as mock_find:
+            mock_find.return_value = ['/test/2023-01-01_company.pdf']
+            
+            # Should handle future dates by skipping the check
+            with patch('builtins.print') as mock_print:
+                result = self.checker.check_year('2023')
+                
+                # Verify that the files were skipped (empty result)
+                self.assertEqual(result['employment'], [])
+                
+                # Verify that we got the skip message
+                mock_print.assert_any_call("⏭️ Skipping Company (monthly) - not active in 2023 (active from 9999 to 9999)")
+
+    def test_validate_frequency_with_unknown_frequency(self):
+        """Test validating frequency with an unknown frequency type."""
+        # Test with unknown frequency and files
+        matches = ['/test/2023-01-01_doc.pdf']
+        is_valid, count, expected = self.checker.validate_frequency(matches, 'unknown', '2023')
+        self.assertTrue(is_valid)  # Should be valid if at least one file exists
+        self.assertEqual(count, 1)
+        self.assertEqual(expected, 1)
+
+        # Test with unknown frequency and no files
+        matches = []
+        is_valid, count, expected = self.checker.validate_frequency(matches, 'unknown', '2023')
+        self.assertFalse(is_valid)  # Should be invalid if no files exist
+        self.assertEqual(count, 0)
+        self.assertEqual(expected, 1)
+
+    def test_get_available_years_with_invalid_directory(self):
+        """Test getting available years with an invalid directory."""
+        # Set up a directory mapping that points to a non-existent directory
+        self.checker.directory_mapping = {'test': '/nonexistent/directory'}
+        
+        # Should return an empty list for invalid directory
+        years = self.checker.list_available_years()
+        self.assertEqual(years, [])
 
 if __name__ == '__main__':
     unittest.main()
