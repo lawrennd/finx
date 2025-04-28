@@ -9,4 +9,7 @@ You create tests for the code that ensure it will run.
 
 You make sure no private information is stored in this package and that it is loaded from separate configuration files that are not connected to github.
 
-We run everything in python 3.11, and can use conda activate p311 to start the python 3.11 environment.
+We run everything in python 3.11, and can use conda activate py311 to start the python 3.11 environment.
+
+
+Always use poetry for installs and running tests and code coverage.
