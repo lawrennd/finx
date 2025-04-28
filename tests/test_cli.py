@@ -271,9 +271,13 @@ class TestCLI(TestCase):
                 mock_namespace = argparse.Namespace()
                 mock_namespace.command = 'invest'
                 mock_namespace.verbose = False
-                mock_namespace.func = invest_command  # Set the function attribute
+                mock_namespace.func = invest_command
                 mock_parse_args.return_value = mock_namespace
                 
-                with patch('builtins.print') as mock_print:
+                with patch('logging.Logger.error') as mock_error:
+                    # The NotImplementedError is caught in main(), so we check the return code
                     assert main(None) == 1
-                    mock_print.assert_called_with("Investment tracking functionality is not yet implemented") 
+                    
+                    # Verify error messages were logged
+                    mock_error.assert_any_call("Investment tracking functionality is not yet implemented")
+                    mock_error.assert_any_call("Error executing command: Investment tracking functionality is not yet implemented")

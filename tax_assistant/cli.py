@@ -171,7 +171,7 @@ def tax_status_command(args):
     
     # If a specific year is provided, check only that year
     if args.year:
-        logger.info(f"Checking documents for year {args.year}")
+        print(f"Checking documents for year {args.year}")
         results = checker.check_year(args.year, list_missing=False)
         return 0 if results['all_found'] else 1
     
@@ -181,11 +181,11 @@ def tax_status_command(args):
         logger.warning("No tax years found in the directory.")
         return 0
     
-    logger.info(f"Available tax years: {', '.join(years)}")
+    print(f"Available tax years: {', '.join(years)}")
     all_complete = True
     
     for year in years:
-        logger.info(f"Checking documents for year {year}")
+        print(f"Checking documents for year {year}")
         results = checker.check_year(year, list_missing=False)
         if not results['all_found']:
             all_complete = False
@@ -210,7 +210,7 @@ def tax_missing_command(args):
     else:
         years_to_check = checker.list_available_years()
         if not years_to_check:
-            logger.warning("No tax years found in the directory.")
+            print("No tax years found in the directory.")
             return 0
     
     # Process each year
@@ -233,17 +233,17 @@ def tax_missing_command(args):
                         'url': missing.get('url', '')
                     })
             else:
-                logger.info(f"No missing files for year {year}")
+                print(f"No missing files for year {year}")
         else:
             # Text format (default)
             if results['missing_files']:
-                logger.info(f"\nMissing files for year {year}:")
+                print(f"\nMissing files for year {year}:")
                 for missing in results['missing_files']:
-                    logger.info(f"- {missing['path']}")
+                    print(f"- {missing['path']}")
                     if 'url' in missing and missing['url']:
-                        logger.info(f"  Can be found at: {missing['url']}")
+                        print(f"  Can be found at: {missing['url']}")
             else:
-                logger.info(f"No missing files for year {year}")
+                print(f"No missing files for year {year}")
     
     return 0
 
@@ -287,28 +287,33 @@ def tax_update_dates_command(args):
 
 def invest_command(args):
     """Placeholder for investment tracking command."""
-    print("Investment tracking functionality is not yet implemented")
-    return 1
+    logger = logging.getLogger('finx')
+    logger.error("Investment tracking functionality is not yet implemented")
+    raise NotImplementedError("Investment tracking functionality is not yet implemented")
 
 def networth_command(args):
     """Placeholder for net worth tracking command."""
-    print("Net worth tracking functionality is not yet implemented")
-    return 1
+    logger = logging.getLogger('finx')
+    logger.error("Net worth tracking functionality is not yet implemented")
+    raise NotImplementedError("Net worth tracking functionality is not yet implemented")
 
 def budget_command(args):
     """Placeholder for budget management command."""
-    print("Budget management functionality is not yet implemented")
-    return 1
+    logger = logging.getLogger('finx')
+    logger.error("Budget management functionality is not yet implemented")
+    raise NotImplementedError("Budget management functionality is not yet implemented")
 
 def estate_command(args):
     """Placeholder for estate planning command."""
-    print("Estate planning functionality is not yet implemented")
-    return 1
+    logger = logging.getLogger('finx')
+    logger.error("Estate planning functionality is not yet implemented")
+    raise NotImplementedError("Estate planning functionality is not yet implemented")
 
 def savings_command(args):
     """Placeholder for savings goals command."""
-    print("Savings goals functionality is not yet implemented")
-    return 1
+    logger = logging.getLogger('finx')
+    logger.error("Savings goals functionality is not yet implemented")
+    raise NotImplementedError("Savings goals functionality is not yet implemented")
 
 def setup_tax_parser(subparsers):
     """Set up the parser for the 'tax' command."""
@@ -405,8 +410,11 @@ Examples:
     
     return parser.parse_args(args)
 
-def main(args):
+def main(args=None):
     """Main entry point for the CLI."""
+    if args is None:
+        args = sys.argv[1:]
+    
     parsed_args = parse_args(args)
     
     # Set up logging
@@ -437,4 +445,4 @@ def main(args):
     return 0
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:])) 
+    sys.exit(main()) 
