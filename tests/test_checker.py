@@ -956,17 +956,68 @@ class TestTaxDocumentChecker(unittest.TestCase):
 
     def test_load_private_config_precedence(self):
         """Test that private config file takes precedence over dummy file when both exist."""
-        # Create both private and dummy config files
+        # Create test data with the correct structure
         private_config_data = {
-            'private_pattern': {
-                'frequency': 'monthly',
-                'pattern': r'\d{4}-\d{2}-\d{2}_private\.pdf'
+            'employment': {
+                'current': [
+                    {
+                        'name': 'University of Cambridge',
+                        'frequency': 'monthly',
+                        'annual_document_type': 'P60',
+                        'patterns': [
+                            {'base': 'university-of-cambridge'}
+                        ],
+                        'start_date': '2020-04-05'
+                    }
+                ]
+            },
+            'investment': {
+                'us': [
+                    {
+                        'name': 'Computershare',
+                        'frequency': 'yearly',
+                        'annual_document_type': '1099',
+                        'patterns': [
+                            {
+                                'base': 'computershare',
+                                'identifiers': ['microsoft', 'exxonmobil']
+                            }
+                        ],
+                        'start_date': '2006-12-31'
+                    }
+                ]
             }
         }
+        
         dummy_config_data = {
-            'dummy_pattern': {
-                'frequency': 'yearly',
-                'pattern': r'\d{4}-\d{2}-\d{2}_dummy\.pdf'
+            'employment': {
+                'current': [
+                    {
+                        'name': 'Example Corp',
+                        'frequency': 'monthly',
+                        'annual_document_type': 'P60',
+                        'patterns': [
+                            {'base': 'example-corp'}
+                        ],
+                        'start_date': '2023-01-01'
+                    }
+                ]
+            },
+            'investment': {
+                'us': [
+                    {
+                        'name': 'Example Investment',
+                        'frequency': 'yearly',
+                        'annual_document_type': '1099',
+                        'patterns': [
+                            {
+                                'base': 'example-investment',
+                                'identifiers': ['example1', 'example2']
+                            }
+                        ],
+                        'start_date': '2023-01-01'
+                    }
+                ]
             }
         }
         
@@ -983,9 +1034,28 @@ class TestTaxDocumentChecker(unittest.TestCase):
         # Create a new checker with both files available
         checker = TaxDocumentChecker(self.temp_dir, verbose=True)
         
-        # Verify that the private config file was loaded, not the dummy one
-        self.assertEqual(checker.private_config, private_config_data)
-        self.assertNotEqual(checker.private_config, dummy_config_data)
+        # Verify that the private config patterns are present in the flattened patterns
+        # Check employment patterns
+        employment_patterns = checker.required_patterns['employment']
+        self.assertTrue(any(
+            'university-of-cambridge' in pattern['pattern'] and pattern['frequency'] == 'monthly'
+            for pattern in employment_patterns
+        ))
+        self.assertFalse(any(
+            'example-corp' in pattern['pattern']
+            for pattern in employment_patterns
+        ))
+        
+        # Check investment patterns
+        investment_us_patterns = checker.required_patterns['investment_us']
+        self.assertTrue(any(
+            'computershare' in pattern['pattern'] and 'microsoft' in pattern['pattern'] and 'exxonmobil' in pattern['pattern']
+            for pattern in investment_us_patterns
+        ))
+        self.assertFalse(any(
+            'example-investment' in pattern['pattern']
+            for pattern in investment_us_patterns
+        ))
 
     def test_load_directory_mapping_file_not_found(self):
         """Test loading directory mapping when file doesn't exist."""

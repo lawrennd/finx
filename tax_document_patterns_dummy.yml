@@ -1,61 +1,139 @@
-# Private tax document patterns
-# Contains account-specific information and private patterns
-# DO NOT COMMIT THIS FILE TO VERSION CONTROL
+# Dummy file for Private configuration overrides
+# This file contains private configuration that overrides the base configuration
+# Missing end dates mean relationship is currently active.
+additional:
+- frequency: yearly
+  name: EXAMPLE_TAX_RETURN
+  patterns:
+  - base: example-tax-return
+  start_date: '2023-01-01'
+  end_date: '2025-01-01'
+- frequency: yearly
+  name: EXAMPLE_E_FILE
+  patterns:
+  - base: EXAMPLE-E-FILE
+- frequency: yearly
+  name: EXAMPLE_FEDERAL_TAX
+  patterns:
+  - base: EXAMPLE
+    suffix: Federal
+- frequency: yearly
+  name: EXAMPLE_FINCEN
+  patterns:
+  - base: EXAMPLE
+    suffix: FinCEN
 
 employment:
   current:
-    - name: "EXAMPLE_EMPLOYER"  # Replace with actual employer name
+    - frequency: monthly
+      name: "EXAMPLE_CURRENT_EMPLOYER"
+      annual_document_type: "P60"
       patterns:
-        - base: example-employer  # Replace with actual pattern
-      frequency: monthly
-      annual_document_type: P60
-      start_date: '2020-01-01'  # Replace with actual date
-      end_date: null  # null for current employment
+        - base: example-current-employer
+      start_date: '2023-01-01'
+    - frequency: monthly
+      name: "ANOTHER_CURRENT_EMPLOYER"
+      annual_document_type: "P60"
+      patterns:
+        - base: another-current-employer
+      start_date: '2023-01-01'
+      end_date: '2023-12-31'
+  generic:
+    - frequency: yearly
+      name: "EXAMPLE_P45_P60"
+      patterns:
+        - base: .*_example_p45
+        - base: .*_example_p60
+      start_date: '2023-01-01'
+      end_date: '2024-12-31'
   previous:
-    - name: "PREVIOUS_EMPLOYER"  # Replace with actual employer name
+    - frequency: monthly
+      name: "EXAMPLE_PREVIOUS_EMPLOYER"
+      annual_document_type: "P60"
       patterns:
-        - base: previous-employer  # Replace with actual pattern
-      frequency: monthly
-      annual_document_type: P60
-      start_date: '2018-01-01'  # Replace with actual date
-      end_date: '2019-12-31'  # Replace with actual date
+        - base: example-previous-employer
+          identifiers:
+            - example1
+            - example2
+      start_date: '2020-01-01'
+      end_date: '2022-12-31'
 
 investment:
-  us:
-    - name: "US_INVESTMENT_FIRM"  # Replace with actual firm name
-      patterns:
-        - base: us-investment  # Replace with actual pattern
-      frequency: yearly
-      annual_document_type: "1099"
-      start_date: '2020-01-01'  # Replace with actual date
-      end_date: null
   uk:
-    - name: "UK_INVESTMENT_FIRM"  # Replace with actual firm name
+    - frequency: yearly
+      name: "EXAMPLE_UK_INVESTMENT"
+      annual_document_type: "Annual Statement"
       patterns:
-        - base: uk-investment  # Replace with actual pattern
-      frequency: yearly
-      start_date: '2020-01-01'  # Replace with actual date
-      end_date: null
+        - base: example-uk-investment
+      start_date: '2023-01-01'
+    - frequency: monthly
+      name: "ANOTHER_UK_INVESTMENT"
+      annual_document_type: "Annual Statement"
+      patterns:
+        - base: another-uk-investment
+      start_date: '2023-01-01'
+      end_date: '2023-12-31'
+  us:
+    - frequency: yearly
+      name: "EXAMPLE_US_INVESTMENT"
+      annual_document_type: "1099"
+      patterns:
+        - base: example-us-investment
+          identifiers: ["example1", "example2"]
+      start_date: '2023-01-01'
+    - frequency: yearly
+      name: "ANOTHER_US_INVESTMENT"
+      annual_document_type: "1099"
+      patterns:
+        - base: another-us-investment
+      start_date: '2023-01-01'
+      end_date: '2023-12-31'
 
 bank:
   uk:
-    - name: "UK_BANK"  # Replace with actual bank name
+    - name: "EXAMPLE_UK_BANK"
+      frequency: monthly
+      annual_document_type: "Annual Statement"
       account_types:
-        - name: "SAVINGS"  # Replace with actual account type
+        - name: "Joint Account"
           patterns:
-            - base: uk-bank-savings  # Replace with actual pattern
-          frequency: monthly
-          start_date: '2020-01-01'  # Replace with actual date
-          end_date: null
+            - base: example-uk-bank
+              identifiers: ["joint"]
+          start_date: '2023-01-01'
+          end_date: '2024-12-31'
+        - name: "Savings"
+          patterns:
+            - base: example-uk-bank
+              identifiers: ["savings"]
+          start_date: '2023-01-01'
+          end_date: '2024-12-31'
+    - name: "ANOTHER_UK_BANK"
+      frequency: yearly
+      annual_document_type: "Annual Statement"
+      patterns:
+        - base: another-uk-bank
+      start_date: '2023-01-01'
+      end_date: '2024-12-31'
   us:
-    - name: "US_BANK"  # Replace with actual bank name
+    - name: "EXAMPLE_US_BANK"
+      annual_document_type: "1099"
       account_types:
-        - name: "CHECKING"  # Replace with actual account type
+        - name: "savings"
+          frequency: quarterly
           patterns:
-            - base: us-bank-checking  # Replace with actual pattern
+            - base: example-us-bank
+              identifiers:
+                - savings
+          start_date: '2023-01-01'
+          end_date: '2023-12-31'
+    - name: "ANOTHER_US_BANK"
+      annual_document_type: "1099"
+      account_types:
+        - name: "savings"
           frequency: monthly
-          start_date: '2020-01-01'  # Replace with actual date
-          end_date: null
+          patterns:
+            - base: another-us-bank
+              identifiers:
+                - savings
+          start_date: '2023-01-01'
 
-# Add a .gitignore entry to exclude this file
-# echo "tax_document_patterns_private.yaml" >> .gitignore 
