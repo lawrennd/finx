@@ -1,13 +1,10 @@
 """
-Script for creating password-protected zip files of tax documents.
+Functions for creating password-protected zip files of documents.
 """
 
-import argparse
 import os
-import sys
 import zipfile
 from pathlib import Path
-from tax_assistant.checker import TaxDocumentChecker
 from getpass import getpass
 
 def check_missing_files(checker, year=None):
@@ -34,6 +31,47 @@ def check_missing_files(checker, year=None):
             missing_files.extend(results.get('missing_files', []))
     
     return missing_files, all_files_present
+
+def create_zip_archive(year=None, dummy=False, base_path=None, config_file=None, 
+                       private_config_file=None, directory_mapping_file=None, 
+                       output_path=None, password=None, verbose=False):
+    """
+    Create a zip archive of tax documents.
+    
+    Args:
+        year (str): Specific tax year to include
+        dummy (bool): If True, only simulate without creating a zip file
+        base_path (str): Base path containing tax documents
+        config_file (str): Path to base configuration file
+        private_config_file (str): Path to private configuration file
+        directory_mapping_file (str): Path to directory mapping file
+        output_path (str): Path where to save the zip file
+        password (str): Password for the zip file
+        verbose (bool): Enable verbose output
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    # Import here to avoid circular imports
+    from .checker import TaxDocumentChecker
+    
+    # Initialize the checker
+    checker = TaxDocumentChecker(
+        base_path=base_path,
+        config_file=config_file,
+        private_config_file=private_config_file,
+        directory_mapping_file=directory_mapping_file,
+        verbose=verbose
+    )
+    
+    # Create the zip file using the existing function
+    return create_password_protected_zip(
+        checker,
+        year=year,
+        output_path=output_path,
+        password=password,
+        dummy=dummy
+    )
 
 def create_password_protected_zip(checker, year=None, output_path=None, password=None, dummy=False):
     """
@@ -129,7 +167,7 @@ def create_password_protected_zip(checker, year=None, output_path=None, password
                 # Get the relative path for the file in the zip
                 rel_path = os.path.relpath(file_path, checker.base_path)
                 print(f"Adding: {rel_path}")
-                zipf.write(file_path, rel_path, pwd=password.encode())
+                zipf.write(file_path, rel_path, pwd=password.encode() if password else None)
         
         print(f"\nSuccessfully created password-protected zip file: {output_path}")
         print(f"Total files included: {len(files_to_zip)}")
@@ -137,40 +175,4 @@ def create_password_protected_zip(checker, year=None, output_path=None, password
     
     except Exception as e:
         print(f"Error creating zip file: {str(e)}")
-        return False
-
-def main():
-    """Main entry point for the zip-tax-documents command."""
-    parser = argparse.ArgumentParser(description='Create a password-protected zip file of tax documents.')
-    parser.add_argument('--year', type=str, help='Specific tax year to include')
-    parser.add_argument('--output', type=str, help='Output path for the zip file')
-    parser.add_argument('--password', type=str, help='Password for the zip file (not recommended, use interactive mode)')
-    parser.add_argument('--base-path', type=str, help='Base path containing tax documents')
-    parser.add_argument('--config-file', type=str, help='Path to base configuration file')
-    parser.add_argument('--private-config-file', type=str, help='Path to private configuration file')
-    parser.add_argument('--directory-mapping-file', type=str, help='Path to directory mapping file')
-    parser.add_argument('--dummy', action='store_true', help='Run in dummy mode (shows what would be included without creating zip)')
-    
-    args = parser.parse_args()
-    
-    # Initialize the checker
-    checker = TaxDocumentChecker(
-        base_path=args.base_path,
-        config_file=args.config_file,
-        private_config_file=args.private_config_file,
-        directory_mapping_file=args.directory_mapping_file
-    )
-    
-    # Create the zip file
-    success = create_password_protected_zip(
-        checker,
-        year=args.year,
-        output_path=args.output,
-        password=args.password,
-        dummy=args.dummy
-    )
-    
-    sys.exit(0 if success else 1)
-
-if __name__ == '__main__':
-    main() 
+        return False 

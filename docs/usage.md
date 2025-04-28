@@ -1,114 +1,322 @@
 # Usage Guide
 
-This document explains how to use the Tax Document Checker tool.
+This document explains how to use the Finance Assistant toolkit.
 
-## Command Line Usage
+## Command-Line Structure
 
-### Basic Commands
+Finance Assistant uses a Git-like command structure with subcommands for different financial management functions:
 
-1. Check all available tax years:
-   ```
-   tax-assistant
-   ```
+```
+finx <command> <subcommand> [options]
+```
 
-2. Check a specific tax year:
-   ```
-   tax-assistant --year 2023
-   ```
+Available commands:
 
-3. Update the YAML configuration with inferred dates:
-   ```
-   tax-assistant --update-dates
-   ```
+- `tax`: Tax document management
+- `invest`: Investment tracking (planned)
+- `networth`: Net worth calculation (planned)
+- `budget`: Budget management (planned)
+- `estate`: Estate planning (planned)
+- `savings`: Savings goals tracking (planned)
 
-4. List missing files:
-   ```
-   tax-assistant --list-missing
-   ```
+## Tax Document Management
 
-5. Output results in JSON format:
-   ```
-   tax-assistant --format json
-   ```
+The `tax` command helps you organize and manage tax documents.
 
-6. Output results in CSV format:
-   ```
-   tax-assistant --format csv
-   ```
+### Subcommands
 
-7. Check compliance without listing files:
-   ```
-   tax-assistant --no-list
-   ```
+#### status
 
-8. Enable console output for logging:
-   ```
-   tax-assistant --console-output
-   ```
+Check tax documents for completeness.
 
-9. Specify a custom log file:
-   ```
-   tax-assistant --log-file custom.log
-   ```
+```bash
+# Check all available tax years
+finx tax status
 
-### Command Line Arguments
+# Check a specific tax year
+finx tax status --year 2023
 
-| Argument | Description |
+# Verbose output with detailed information
+finx tax status --verbose
+```
+
+#### missing
+
+List missing tax documents.
+
+```bash
+# List missing documents for all years
+finx tax missing
+
+# List missing documents for a specific year
+finx tax missing --year 2023
+
+# Output in JSON format
+finx tax missing --format json
+
+# Output in CSV format
+finx tax missing --format csv
+```
+
+#### zip
+
+Create a password-protected zip archive of tax documents.
+
+```bash
+# Create a zip for the current tax year
+finx tax zip
+
+# Create a zip for a specific tax year
+finx tax zip --year 2023
+
+# Test run without creating the zip
+finx tax zip --dummy
+```
+
+#### update-dates
+
+Update the configuration with inferred dates from filenames.
+
+```bash
+finx tax update-dates
+```
+
+### Global Options for Tax Command
+
+| Option | Description |
 |----------|-------------|
 | `--year` | Specific year to check (e.g., 2023) |
-| `--update-dates` | Update YAML with inferred dates |
 | `--base-path` | Base path for tax documents (default: current directory) |
 | `--verbose`, `-v` | Enable verbose output for debugging |
-| `--log-file` | Path to log file (default: tax_document_checker.log) |
-| `--console-output` | Enable logging output to console |
-| `--no-list` | Skip file listing and only check compliance |
-| `--format` | Output format for file listing (choices: text, json, csv, default: text) |
-| `--list-missing` | List missing files |
+| `--log-file` | Path to log file (default: finance_assistant.log) |
+| `--format` | Output format (choices: text, json, csv, default: text) |
+| `--config-file` | Path to base configuration file |
+| `--private-config-file` | Path to private configuration file |
+| `--directory-mapping-file` | Path to directory mapping file |
+
+## Investment Tracking (Planned)
+
+The `invest` command will help you track and analyze your investments.
+
+### Planned Subcommands
+
+#### summary
+
+Display a summary of all investments.
+
+```bash
+finx invest summary
+```
+
+#### performance
+
+Check performance of investments.
+
+```bash
+# Check performance for all time periods
+finx invest performance
+
+# Check performance for specific period
+finx invest performance --period 1y
+```
+
+#### allocation
+
+View asset allocation.
+
+```bash
+finx invest allocation
+```
+
+## Net Worth Tracking (Planned)
+
+The `networth` command will help you track your overall financial position.
+
+### Planned Subcommands
+
+#### status
+
+Show current net worth.
+
+```bash
+finx networth status
+```
+
+#### history
+
+Show net worth changes over time.
+
+```bash
+# Show all history
+finx networth history
+
+# Show history for a specific period
+finx networth history --period 5y
+```
+
+#### add-asset
+
+Add a new asset.
+
+```bash
+finx networth add-asset "Home" --value 500000 --type real-estate
+```
+
+#### add-liability
+
+Add a new liability.
+
+```bash
+finx networth add-liability "Mortgage" --value 300000 --type loan
+```
+
+## Budget Management (Planned)
+
+The `budget` command will help you track income and expenses.
+
+### Planned Subcommands
+
+#### status
+
+Show current budget status.
+
+```bash
+finx budget status
+```
+
+#### add-income
+
+Add income transaction.
+
+```bash
+finx budget add-income "Salary" --amount 5000 --category employment
+```
+
+#### add-expense
+
+Add expense transaction.
+
+```bash
+finx budget add-expense "Groceries" --amount 150.75 --category food
+```
+
+#### report
+
+Generate budget reports.
+
+```bash
+# Report for current month
+finx budget report
+
+# Report for specific month
+finx budget report --month 2023-05
+```
+
+## Estate Planning (Planned)
+
+The `estate` command will help you organize documents for wills and estate planning.
+
+### Planned Subcommands
+
+#### list
+
+List estate planning documents.
+
+```bash
+finx estate list
+```
+
+#### verify
+
+Check for missing critical documents.
+
+```bash
+finx estate verify
+```
+
+## Savings Goals (Planned)
+
+The `savings` command will help you track progress towards savings goals.
+
+### Planned Subcommands
+
+#### list
+
+List all savings goals.
+
+```bash
+finx savings list
+```
+
+#### add
+
+Add a new savings goal.
+
+```bash
+finx savings add "New Car" --target 25000 --deadline 2025-06
+```
+
+#### update
+
+Update progress on a savings goal.
+
+```bash
+finx savings update "New Car" --current 5000
+```
 
 ## Configuration
 
 The tool uses three YAML configuration files:
 
-### Base Configuration (tax_document_patterns_base.yml)
+### Base Configuration (finance_assistant_base.yml)
 
 Contains public patterns and configurations that can be shared and version controlled:
 
 ```yaml
-employment:
-  patterns:
-    payslip:
-      base: payslip
-      frequency: monthly
-      annual_document_type: P60
-    p45:
-      base: p45
-      frequency: once
-    p60:
-      base: p60
-      frequency: yearly
-
-investment:
-  us:
+tax:
+  employment:
     patterns:
-      1099_div:
-        base: 1099-div
+      payslip:
+        base: payslip
+        frequency: monthly
+        annual_document_type: P60
+      p45:
+        base: p45
+        frequency: once
+      p60:
+        base: p60
         frequency: yearly
+  
+  investment:
+    us:
+      patterns:
+        1099_div:
+          base: 1099-div
+          frequency: yearly
 ```
 
-### Private Configuration (tax_document_patterns_private.yml)
+### Private Configuration (finance_assistant_private.yml)
 
 Contains account-specific information and should NOT be committed to version control:
 
 ```yaml
-employment:
-  current:
-    - name: "EXAMPLE_EMPLOYER"  # Replace with actual employer name
-      patterns:
-        - base: example-employer  # Replace with actual pattern
-      frequency: monthly
-      annual_document_type: P60
-      start_date: '2020-01-01'  # Replace with actual date
-      end_date: null  # null for current employment
+tax:
+  employment:
+    current:
+      - name: "EXAMPLE_EMPLOYER"  # Replace with actual employer name
+        patterns:
+          - base: example-employer  # Replace with actual pattern
+        frequency: monthly
+        annual_document_type: P60
+        start_date: '2020-01-01'  # Replace with actual date
+        end_date: null  # null for current employment
+
+invest:
+  accounts:
+    - name: "EXAMPLE_BROKERAGE"
+      type: "taxable"
+      institution: "Example Broker"
+      login_url: "https://example-broker.com/login"
 ```
 
 ### Directory Mapping (directory_mapping.yml)
@@ -117,27 +325,31 @@ Defines where different document types are stored:
 
 ```yaml
 directory_mapping:
-  employment: 
-    - payslips
-  investment_us: 
-    - investments/us
-  investment_uk: 
-    - investments/uk
-  bank_uk: 
-    - banking/uk
-    - UK-savings
-  bank_us: 
-    - banking/us
-  additional: 
-    - tax/us
-    - tax/uk
+  tax:
+    employment: 
+      - payslips
+    investment_us: 
+      - investments/us
+    investment_uk: 
+      - investments/uk
+    bank_uk: 
+      - banking/uk
+      - UK-savings
+    bank_us: 
+      - banking/us
+    additional: 
+      - tax/us
+      - tax/uk
+  
+  estate:
+    documents:
+      - estate/wills
+      - estate/power_of_attorney
 ```
 
-The tool will merge both configurations at runtime, with private patterns taking precedence over base patterns when there are conflicts.
+## Output Interpretation (Tax Documents)
 
-## Output Interpretation
-
-The script provides output in the following format:
+The script provides output in the following format for tax document checking:
 
 ```
 Checking documents for tax year 2023
@@ -178,33 +390,36 @@ BANK_UK:
 The script expects your tax documents to be organized in the following directory structure:
 
 ```
-tax-documents/
-├── UK-payslips/
-│   ├── 2023/
-│   │   ├── 2023-01-01_company-name.pdf
+finance/
+├── tax/
+│   ├── UK-payslips/
+│   │   ├── 2023/
+│   │   │   ├── 2023-01-01_company-name.pdf
+│   │   │   └── ...
+│   │   └── 2022/
+│   │       └── ...
+│   ├── US-investments/
 │   │   └── ...
-│   └── 2022/
-│       └── ...
-├── US-investments/
-│   ├── 2023/
+│   ├── UK-investments/
 │   │   └── ...
-│   └── 2022/
+│   └── ...
+├── investments/
+│   ├── statements/
+│   │   └── ...
+│   └── performance/
 │       └── ...
-├── UK-investments/
+├── networth/
 │   └── ...
-├── UK-savings/
-│   └── ...
-├── US-savings/
-│   └── ...
-├── US-tax/
-│   └── ...
-└── UK-tax/
-    └── ...
+└── estate/
+    ├── wills/
+    │   └── ...
+    └── power_of_attorney/
+        └── ...
 ```
 
 ## File Naming Convention
 
-Files should follow this naming convention:
+For tax documents, files should follow this naming convention:
 ```
 YYYY-MM-DD_base-name_identifier.pdf
 ```
@@ -233,31 +448,8 @@ poetry run pytest -v
 
 With coverage report:
 ```bash
-poetry run pytest --cov=tax_document_checker
+poetry run pytest --cov=finance_assistant
 ```
-
-### Test Data Management
-
-The project uses Python's `tempfile` module for managing test data. This ensures:
-- Clean test environments for each test run
-- Automatic cleanup of test files
-- Isolation between test cases
-- No interference with actual tax documents
-
-Example of using tempfile in tests:
-```python
-import tempfile
-import os
-
-def test_document_processing():
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Create test files in temp_dir
-        test_file = os.path.join(temp_dir, "test_doc.pdf")
-        # Run tests
-        # Files are automatically cleaned up after the test
-```
-
-For more detailed testing guidelines and best practices, refer to the [Testing Guidelines](testing_guidelines.mdc).
 
 ## Troubleshooting
 
@@ -274,7 +466,7 @@ For more detailed testing guidelines and best practices, refer to the [Testing G
    - Ensure files are named with the correct date format
 
 3. **Account dates not updating**
-   - Run the script with the `--update-dates` flag
+   - Run the script with the `tax update-dates` command
    - Check that your files have dates in the correct format
    - Verify that the private YAML file is writable
 
@@ -288,44 +480,12 @@ For more detailed testing guidelines and best practices, refer to the [Testing G
 For more detailed output, you can use the `--verbose` flag:
 
 ```bash
-tax-assistant --verbose
+finx tax status --verbose
 ```
 
-Or enable console output for logging:
+## Security Considerations
 
-```bash
-tax-assistant --console-output
-```
-
-## Advanced Usage
-
-### Customizing Document Patterns
-
-You can customize the document patterns in both YAML files:
-
-- Base patterns (tax_document_patterns_base.yml):
-  - Standard document types (P60, 1099, etc.)
-  - Common frequencies
-  - Generic patterns
-
-- Private patterns (tax_document_patterns_private.yml):
-  - Account-specific names and identifiers
-  - Start and end dates
-  - Custom patterns for specific institutions
-
-### Adding New Document Types
-
-To add a new document type:
-
-1. Add the generic pattern to tax_document_patterns_base.yml
-2. Add account-specific information to tax_document_patterns_private.yml
-3. Create the appropriate directory structure
-4. Run the script to verify the new document type is recognized
-
-### Automating Document Checks
-
-You can automate document checks by:
-
-1. Creating a shell script to run the checker periodically
-2. Setting up a cron job to run the script at specific intervals
-3. Integrating the script into your document management workflow
+- Private financial information should only be stored in the private configuration file
+- The private configuration file should NOT be committed to version control
+- Password protection is used for zip files containing tax documents
+- No data is sent to external servers; all processing is done locally

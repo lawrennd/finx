@@ -8,6 +8,7 @@ import csv
 from pathlib import Path
 from datetime import datetime
 from .checker import TaxDocumentChecker
+from .archive import create_zip_archive
 
 def setup_logging(log_file=None, verbose=False, console_output=False):
     """Set up logging configuration."""
@@ -156,112 +157,284 @@ def list_missing_files(checker, year=None, output_format='text'):
             # Print file info
             print(f"    {Path(file['path']).name}")
 
-def main():
+def tax_status_command(args):
+    """Command to check tax document status for one or more years."""
+    logger = logging.getLogger('finx')
+    
+    checker = TaxDocumentChecker(
+        base_path=args.base_path,
+        config_file=args.config_file,
+        private_config_file=args.private_config_file,
+        directory_mapping_file=args.directory_mapping_file,
+        verbose=args.verbose
+    )
+    
+    # If a specific year is provided, check only that year
+    if args.year:
+        logger.info(f"Checking documents for year {args.year}")
+        results = checker.check_year(args.year, list_missing=False)
+        return 0 if results['all_found'] else 1
+    
+    # Otherwise, check all available years
+    years = checker.list_available_years()
+    if not years:
+        logger.warning("No tax years found in the directory.")
+        return 0
+    
+    logger.info(f"Available tax years: {', '.join(years)}")
+    all_complete = True
+    
+    for year in years:
+        logger.info(f"Checking documents for year {year}")
+        results = checker.check_year(year, list_missing=False)
+        if not results['all_found']:
+            all_complete = False
+    
+    return 0 if all_complete else 1
+
+def tax_missing_command(args):
+    """Command to list missing tax documents."""
+    logger = logging.getLogger('finx')
+    
+    checker = TaxDocumentChecker(
+        base_path=args.base_path,
+        config_file=args.config_file,
+        private_config_file=args.private_config_file,
+        directory_mapping_file=args.directory_mapping_file,
+        verbose=args.verbose
+    )
+    
+    # Get years to check
+    if args.year:
+        years_to_check = [args.year]
+    else:
+        years_to_check = checker.list_available_years()
+        if not years_to_check:
+            logger.warning("No tax years found in the directory.")
+            return 0
+    
+    # Process each year
+    for year in years_to_check:
+        results = checker.check_year(year, list_missing=True)
+        
+        # Format and display results based on requested format
+        if args.format == 'json':
+            print(json.dumps(results, indent=2))
+        elif args.format == 'csv':
+            if results['missing_files']:
+                writer = csv.DictWriter(sys.stdout, fieldnames=['year', 'path', 'name', 'frequency', 'url'])
+                writer.writeheader()
+                for missing in results['missing_files']:
+                    writer.writerow({
+                        'year': year,
+                        'path': missing['path'],
+                        'name': missing['name'],
+                        'frequency': missing['frequency'],
+                        'url': missing.get('url', '')
+                    })
+            else:
+                logger.info(f"No missing files for year {year}")
+        else:
+            # Text format (default)
+            if results['missing_files']:
+                logger.info(f"\nMissing files for year {year}:")
+                for missing in results['missing_files']:
+                    logger.info(f"- {missing['path']}")
+                    if 'url' in missing and missing['url']:
+                        logger.info(f"  Can be found at: {missing['url']}")
+            else:
+                logger.info(f"No missing files for year {year}")
+    
+    return 0
+
+def tax_zip_command(args):
+    """Command to create a zip archive of tax documents."""
+    logger = logging.getLogger('finx')
+    
+    # Set default year if not provided
+    if not args.year:
+        args.year = str(datetime.now().year)
+    
+    success = create_zip_archive(
+        year=args.year,
+        dummy=args.dummy,
+        base_path=args.base_path,
+        config_file=args.config_file,
+        private_config_file=args.private_config_file,
+        directory_mapping_file=args.directory_mapping_file,
+        verbose=args.verbose
+    )
+    
+    return 0 if success else 1
+
+def tax_update_dates_command(args):
+    """Command to update the configuration with inferred dates."""
+    logger = logging.getLogger('finx')
+    
+    checker = TaxDocumentChecker(
+        base_path=args.base_path,
+        config_file=args.config_file,
+        private_config_file=args.private_config_file,
+        directory_mapping_file=args.directory_mapping_file,
+        verbose=args.verbose
+    )
+    
+    logger.info("Updating YAML with inferred dates...")
+    checker.update_yaml_with_dates()
+    logger.info("YAML updated successfully!")
+    
+    return 0
+
+def invest_command(args):
+    """Placeholder for investment tracking command."""
+    print("Investment tracking functionality is not yet implemented")
+    return 1
+
+def networth_command(args):
+    """Placeholder for net worth tracking command."""
+    print("Net worth tracking functionality is not yet implemented")
+    return 1
+
+def budget_command(args):
+    """Placeholder for budget management command."""
+    print("Budget management functionality is not yet implemented")
+    return 1
+
+def estate_command(args):
+    """Placeholder for estate planning command."""
+    print("Estate planning functionality is not yet implemented")
+    return 1
+
+def savings_command(args):
+    """Placeholder for savings goals command."""
+    print("Savings goals functionality is not yet implemented")
+    return 1
+
+def setup_tax_parser(subparsers):
+    """Set up the parser for the 'tax' command."""
+    tax_parser = subparsers.add_parser('tax', help='Tax document management')
+    tax_subparsers = tax_parser.add_subparsers(dest='tax_command', help='Tax subcommands')
+    
+    # Common arguments for all tax subcommands
+    tax_common_parser = argparse.ArgumentParser(add_help=False)
+    tax_common_parser.add_argument('--year', type=str, help='Specific tax year to check (e.g., 2023)')
+    tax_common_parser.add_argument('--base-path', type=str, default='.', help='Base path for tax documents (default: current directory)')
+    tax_common_parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output for debugging')
+    tax_common_parser.add_argument('--log-file', type=str, help='Path to log file (default: finx.log)')
+    tax_common_parser.add_argument('--config-file', type=str, help='Path to base configuration file')
+    tax_common_parser.add_argument('--private-config-file', type=str, help='Path to private configuration file')
+    tax_common_parser.add_argument('--directory-mapping-file', type=str, help='Path to directory mapping file')
+    
+    # Tax status command
+    status_parser = tax_subparsers.add_parser('status', parents=[tax_common_parser], help='Check tax document status')
+    status_parser.set_defaults(func=tax_status_command)
+    
+    # Tax missing command
+    missing_parser = tax_subparsers.add_parser('missing', parents=[tax_common_parser], help='List missing tax documents')
+    missing_parser.add_argument('--format', choices=['text', 'json', 'csv'], default='text', 
+                              help='Output format for file listing (default: text)')
+    missing_parser.set_defaults(func=tax_missing_command)
+    
+    # Tax zip command
+    zip_parser = tax_subparsers.add_parser('zip', parents=[tax_common_parser], help='Create zip archive of tax documents')
+    zip_parser.add_argument('--dummy', action='store_true', help='Run in dummy mode without creating zip')
+    zip_parser.set_defaults(func=tax_zip_command)
+    
+    # Tax update-dates command
+    update_dates_parser = tax_subparsers.add_parser('update-dates', parents=[tax_common_parser], help='Update YAML with inferred dates')
+    update_dates_parser.set_defaults(func=tax_update_dates_command)
+
+def setup_invest_parser(subparsers):
+    """Set up the parser for the 'invest' command."""
+    invest_parser = subparsers.add_parser('invest', help='Investment tracking (planned)')
+    invest_parser.set_defaults(func=invest_command)
+
+def setup_networth_parser(subparsers):
+    """Set up the parser for the 'networth' command."""
+    networth_parser = subparsers.add_parser('networth', help='Net worth tracking (planned)')
+    networth_parser.set_defaults(func=networth_command)
+
+def setup_budget_parser(subparsers):
+    """Set up the parser for the 'budget' command."""
+    budget_parser = subparsers.add_parser('budget', help='Budget management (planned)')
+    budget_parser.set_defaults(func=budget_command)
+
+def setup_estate_parser(subparsers):
+    """Set up the parser for the 'estate' command."""
+    estate_parser = subparsers.add_parser('estate', help='Estate planning (planned)')
+    estate_parser.set_defaults(func=estate_command)
+
+def setup_savings_parser(subparsers):
+    """Set up the parser for the 'savings' command."""
+    savings_parser = subparsers.add_parser('savings', help='Savings goals tracking (planned)')
+    savings_parser.set_defaults(func=savings_command)
+
+def parse_args(args):
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description='Check tax documents against configured patterns',
+        description='Financial management toolkit',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # List all files found (default behavior)
-  tax-document-checker
+  # Check tax documents for all years
+  finx tax status
   
-  # List files in JSON format
-  tax-document-checker --format json
+  # Check tax documents for a specific year
+  finx tax status --year 2023
   
-  # List files in CSV format
-  tax-document-checker --format csv
+  # List missing tax documents
+  finx tax missing
   
-  # List files for a specific year
-  tax-document-checker --year 2023
+  # Create a zip archive of tax documents
+  finx tax zip --year 2023
   
-  # Check compliance without listing files
-  tax-document-checker --no-list
-  
-  # List missing files
-  tax-document-checker --list-missing
-  
-  # List missing files for a specific year
-  tax-document-checker --year 2023 --list-missing
-  
-  # Update YAML with inferred dates
-  tax-document-checker --update-dates
-  
-  # Check with verbose output
-  tax-document-checker --verbose
+  # Update tax document dates in configuration
+  finx tax update-dates
         """
     )
-    parser.add_argument('--year', type=str, help='Specific tax year to check (e.g., 2023)')
-    parser.add_argument('--update-dates', action='store_true', help='Update YAML with inferred dates from filenames')
-    parser.add_argument('--base-path', type=str, default='.', help='Base path for tax documents (default: current directory)')
-    parser.add_argument('--config-file', type=str, help='Path to base configuration file')
-    parser.add_argument('--private-config-file', type=str, help='Path to private configuration file')
-    parser.add_argument('--directory-mapping-file', type=str, help='Path to directory mapping file')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output for debugging')
-    parser.add_argument('--log-file', type=str, help='Path to log file (default: tax_document_checker.log)')
-    parser.add_argument('--console-output', action='store_true', help='Enable logging output to console')
-    parser.add_argument('--no-list', action='store_true', help='Skip file listing and only check compliance')
-    parser.add_argument('--format', choices=['text', 'json', 'csv'], default='text', 
-                      help='Output format for file listing (default: text)')
-    parser.add_argument('--list-missing', action='store_true', 
-                      help='List missing files')
     
-    args = parser.parse_args()
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+    
+    # Set up command parsers
+    setup_tax_parser(subparsers)
+    setup_invest_parser(subparsers)
+    setup_networth_parser(subparsers)
+    setup_budget_parser(subparsers)
+    setup_estate_parser(subparsers)
+    setup_savings_parser(subparsers)
+    
+    return parser.parse_args(args)
+
+def main(args):
+    """Main entry point for the CLI."""
+    parsed_args = parse_args(args)
     
     # Set up logging
-    logger = setup_logging(args.log_file, args.verbose, args.console_output)
+    log_level = logging.DEBUG if parsed_args.verbose else logging.INFO
+    logger = setup_logging(None, log_level)
     
-    logger.info("Initializing TaxDocumentChecker...")
-    logger.debug(f"Base path: {args.base_path}")
+    # Check if a command was provided
+    if not parsed_args.command:
+        print("No command specified. Use --help to see available commands.")
+        return 1
     
-    # Initialize checker
-    checker = TaxDocumentChecker(args.base_path, verbose=args.verbose)
+    # For tax commands, check if a subcommand was provided
+    if parsed_args.command == 'tax' and not hasattr(parsed_args, 'func'):
+        print("No tax subcommand specified. Use 'finx tax --help' to see available subcommands.")
+        return 1
     
-    # Update dates if requested
-    if args.update_dates:
-        logger.info("Updating YAML with inferred dates...")
-        checker.update_yaml_with_dates()
-        logger.info("YAML updated successfully!")
-        return 0
-    
-    # List missing files if requested
-    if args.list_missing:
-        list_missing_files(checker, args.year, args.format)
-        return 0
-    
-    # Check specific year if provided and --no-list is set
-    if args.no_list:
-        if args.year:
-            logger.info(f"Checking documents for year {args.year}...")
-            results = checker.check_year(args.year, list_missing=False)
-            if not results['all_found']:
-                return 1
-            return 0
-        
-        # Otherwise, check all available years
-        logger.info("Listing available tax years...")
-        years = checker.list_available_years()
-        if not years:
-            logger.error("No tax years found in the directory!")
+    # Execute the function associated with the command
+    if hasattr(parsed_args, 'func'):
+        try:
+            return parsed_args.func(parsed_args)
+        except Exception as e:
+            logger.error(f"Error executing command: {str(e)}")
+            if parsed_args.verbose:
+                import traceback
+                logger.error(traceback.format_exc())
             return 1
-        
-        logger.info(f"Found {len(years)} tax years: {', '.join(years)}")
-        logger.info("Checking documents for all available years...")
-        
-        all_found = True
-        for year in years:
-            logger.info(f"Processing year {year}...")
-            results = checker.check_year(year, list_missing=False)
-            if not results['all_found']:
-                all_found = False
-        
-        logger.info("Document check complete!")
-        logger.info(f"All documents found: {'Yes' if all_found else 'No'}")
-        
-        return 0 if all_found else 1
     
-    # List found files (default behavior)
-    list_files(checker, args.year, args.format)
     return 0
 
-if __name__ == '__main__':
-    sys.exit(main()) 
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:])) 

@@ -1,32 +1,32 @@
-# Tax Document Checker
+# Finance Assistant
 
 [![Tests](https://github.com/lawrennd/tax_document_checker/actions/workflows/tests.yml/badge.svg)](https://github.com/lawrennd/tax_document_checker/actions/workflows/tests.yml)
 [![codecov](https://codecov.io/gh/lawrennd/tax_document_checker/branch/main/graph/badge.svg)](https://codecov.io/gh/lawrennd/tax_document_checker)
 [![Python Versions](https://img.shields.io/pypi/pyversions/tax-document-checker.svg)](https://pypi.org/project/tax-document-checker/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A Python utility for checking and validating tax documents based on configurable patterns and frequencies.
+A comprehensive command-line toolkit for managing personal finances, including tax document organization, investment tracking, net worth calculation, and more.
 
 ## Overview
 
-This tool helps you track and validate your tax documents by checking for the presence of required files based on their expected frequency (monthly, quarterly, yearly, etc.). It supports various document types including:
+Finance Assistant provides a suite of tools to help you manage different aspects of your financial life through a consistent, Git-inspired command-line interface. Each functionality is accessible through subcommands, making it easy to extend and maintain.
 
-- Employment documents (payslips, P60s)
-- Investment documents (US and UK)
-- Bank statements (US and UK)
-- Additional tax documents (tax returns, FinCEN forms, etc.)
+## Current Features
 
-## Features
+- **Tax document management**: Track, validate, and organize your tax documents
+  - Check for missing documents based on configurable patterns
+  - Support for different document frequencies (monthly, quarterly, yearly)
+  - Automatic date extraction from filenames
+  - Validation of document completeness for specific tax years
+  - Multiple output formats (text, JSON, CSV)
 
-- Configurable document patterns via YAML
-- Support for different document frequencies (monthly, quarterly, yearly)
-- Automatic date extraction from filenames
-- Validation of document completeness for specific tax years
-- Support for annual summary documents (P60, 1099, etc.)
-- Automatic detection of account start and end dates
-- Separation of public and private configuration
-- Multiple output formats (text, JSON, CSV)
-- Detailed logging with configurable verbosity
+## Planned Features (Coming Soon)
+
+- **Investment tracking**: Monitor investment performance across accounts
+- **Net worth calculation**: Track assets and liabilities over time
+- **Budget management**: Track income and expenses
+- **Estate planning**: Document organization for wills and estate planning
+- **Savings goals**: Track progress towards savings targets
 
 ## Installation
 
@@ -34,12 +34,6 @@ This tool helps you track and validate your tax documents by checking for the pr
 ```bash
 pip install git+https://github.com/lawrennd/tax_document_checker.git
 ```
-
-Note: To install from the private repository, you need:
-- Git installed on your system
-- Access permissions to the repository
-- Git credentials configured to access private repositories
-- If using SSH, ensure your SSH key is added to your GitHub account
 
 ### Option 2: Install from source using Poetry (for development)
 1. Clone this repository:
@@ -55,139 +49,101 @@ Note: To install from the private repository, you need:
 
 ## Usage
 
-### Basic Usage
+Finance Assistant uses a command structure inspired by `git` with subcommands for different functionality:
 
-To check all available tax years:
+### Tax Document Management
+
 ```bash
-tax-assistant
+# Check tax documents for the current year
+finx tax status
+
+# Check a specific tax year
+finx tax status --year 2023
+
+# List missing documents with URLs
+finx tax missing
+
+# Create a zip file of tax documents
+finx tax zip --year 2023
+
+# Update document configuration with inferred dates
+finx tax update-dates
 ```
 
-To check a specific tax year:
+### Investment Tracking (Planned)
+
 ```bash
-tax-assistant --year 2023
+# View investment summary
+finx invest summary
+
+# Check performance
+finx invest performance --period 1y
+
+# View asset allocation
+finx invest allocation
 ```
 
-To update the YAML configuration with inferred dates:
+### Net Worth Tracking (Planned)
+
 ```bash
-tax-assistant --update-dates
+# Calculate current net worth
+finx networth status
+
+# Show net worth history
+finx networth history --period 5y
+
+# Add a new asset or liability
+finx networth add-asset "Home" --value 500000
 ```
 
-To specify a custom base path for tax documents:
+### Budget Management (Planned)
+
 ```bash
-tax-assistant --base-path /path/to/tax/documents
+# View current monthly budget status
+finx budget status
+
+# Add an expense
+finx budget add-expense "Groceries" --amount 150.75
+
+# Generate a budget report
+finx budget report --month 2023-05
 ```
 
-To show detailed information about configuration loading and file searching:
+### Estate Planning (Planned)
+
 ```bash
-tax-assistantr --verbose
+# List estate documents
+finx estate list
+
+# Check for missing critical documents
+finx estate verify
 ```
 
-To list missing files:
-```bash
-tax-assistant --list-missing
-```
-
-To output results in JSON format:
-```bash
-tax-assistant --format json
-```
-
-To output results in CSV format:
-```bash
-tax-assistant --format csv
-```
-
-To check compliance without listing files:
-```bash
-tax-assistant --no-list
-```
-
-To enable console output for logging:
-```bash
-tax-assistant --console-output
-```
-
-To specify a custom log file:
-```bash
-tax-assistant --log-file custom.log
-```
-
-Note: If you installed using Poetry for development, prefix the commands with `poetry run`:
-```bash
-poetry run tax-assistant
-```
+For detailed usage instructions for each command, see the [Usage Guide](docs/usage.md).
 
 ## Configuration
 
-The tool uses two YAML configuration files to separate public patterns from private account information:
+The tool uses YAML configuration files to separate public patterns from private account information:
 
-### Base Configuration (tax_document_patterns_base.yml)
+- **Base Configuration**: Public patterns and configurations that can be shared
+- **Private Configuration**: Account-specific information (not committed to version control)
+- **Directory Mapping**: Defines where different document types are stored
 
-Contains public patterns and configurations that can be shared and version controlled:
+See the [Usage Guide](docs/usage.md) for detailed configuration examples.
 
-```yaml
-employment:
-  patterns:
-    payslip:
-      base: payslip
-      frequency: monthly
-      annual_document_type: P60
-    p45:
-      base: p45
-      frequency: once
-    p60:
-      base: p60
-      frequency: yearly
+## Security Considerations
 
-investment:
-  us:
-    patterns:
-      1099_div:
-        base: 1099-div
-        frequency: yearly
-```
+Finance Assistant is designed with privacy and security in mind:
 
-### Private Configuration (tax_document_patterns_private.yml)
+- Private information is kept separate from base configuration
+- No financial data is sent to external services
+- All processing happens locally on your machine
+- Sensitive files are excluded from version control by default
 
-Contains account-specific information and should NOT be committed to version control:
+## Contributing
 
-```yaml
-employment:
-  current:
-    - name: "EXAMPLE_EMPLOYER"  # Replace with actual employer name
-      patterns:
-        - base: example-employer  # Replace with actual pattern
-      frequency: monthly
-      annual_document_type: P60
-      start_date: '2020-01-01'  # Replace with actual date
-      end_date: null  # null for current employment
-```
+Contributions are welcome! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
-### Directory Mapping (directory_mapping.yml)
+## License
 
-Defines where different document types are stored:
-
-```yaml
-directory_mapping:
-  employment: 
-    - payslips
-  investment_us: 
-    - investments/us
-  investment_uk: 
-    - investments/uk
-  bank_uk: 
-    - banking/uk
-    - UK-savings
-  bank_us: 
-    - banking/us
-  additional: 
-    - tax/us
-    - tax/uk
-```
-
-## Exit Codes
-
-- `0`: Success
-- `1`: General error
-- `2`: Configuration error
-- `3`: File system error
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
