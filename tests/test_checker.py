@@ -400,13 +400,13 @@ class TestTaxDocumentChecker(unittest.TestCase):
         test_args = ['--year', '2023']
         with patch('sys.argv', ['tax-document-checker'] + test_args):
             with patch('argparse.ArgumentParser.parse_args') as mock_args:
-                mock_args.return_value = MagicMock(year='2023', update_dates=False, log_level='INFO')
+                mock_args.return_value = MagicMock(year='2023', update_dates=False, log_level='INFO', list_missing=False)
                 with patch.object(TaxDocumentChecker, 'check_year') as mock_check:
                     mock_check.return_value = True
                     with patch('os.path.dirname', return_value='/test/path'):
                         from tax_assistant.checker import main
                         main()
-                        mock_check.assert_called_once_with('2023')
+                        mock_check.assert_called_once_with('2023', list_missing=False)
 
     def test_main_function_update_dates(self):
         """Test the main function with update_dates flag."""
@@ -424,7 +424,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
         """Test the main function with no arguments."""
         with patch('sys.argv', ['tax-document-checker']):
             with patch('argparse.ArgumentParser.parse_args') as mock_args:
-                mock_args.return_value = MagicMock(year=None, update_dates=False, log_level='INFO')
+                mock_args.return_value = MagicMock(year=None, update_dates=False, log_level='INFO', list_missing=False)
                 with patch.object(TaxDocumentChecker, 'list_available_years') as mock_list:
                     mock_list.return_value = ['2022', '2023']
                     with patch.object(TaxDocumentChecker, 'check_year') as mock_check:
@@ -433,8 +433,8 @@ class TestTaxDocumentChecker(unittest.TestCase):
                             main()
                             assert mock_check.call_count == 2
                             mock_check.assert_has_calls([
-                                unittest.mock.call('2022'),
-                                unittest.mock.call('2023')
+                                unittest.mock.call('2022', list_missing=False),
+                                unittest.mock.call('2023', list_missing=False)
                             ])
 
     def test_save_config(self):
@@ -1142,21 +1142,37 @@ class TestTaxDocumentChecker(unittest.TestCase):
         checker = TaxDocumentChecker(base_path=self.temp_dir, config=config)
         checker.verbose = True  # Enable verbose logging
 
+        # Test without list_missing
         with self.assertLogs(level='INFO') as log:
             results = checker.check_year('2023')
-            
+
             self.assertFalse(results['all_found'])
             self.assertEqual(results['employment'], [])
-            
+
             # Verify the expected log messages in order
             log_messages = [record.message for record in log.records]
-            self.assertTrue(any(f"Checking documents for tax year 2023" in msg for msg in log_messages))
+            self.assertTrue(any("Checking documents for tax year 2023" in msg for msg in log_messages))
+            self.assertTrue(any("=" * 50 in msg for msg in log_messages))
+            self.assertTrue(any("EMPLOYMENT:" in msg for msg in log_messages))
+            self.assertTrue(any("Warning: Could not parse dates, proceeding with check" in msg for msg in log_messages))
+            self.assertTrue(any("✗ No files found for test-company (monthly)" in msg for msg in log_messages))
+
+        # Test with list_missing
+        with self.assertLogs(level='INFO') as log:
+            results = checker.check_year('2023', list_missing=True)
+
+            self.assertFalse(results['all_found'])
+            self.assertEqual(results['employment'], [])
+            self.assertTrue(len(results['missing_files']) > 0)  # Should have generated dummy filenames
+
+            # Verify the expected log messages in order
+            log_messages = [record.message for record in log.records]
+            self.assertTrue(any("Checking documents for tax year 2023" in msg for msg in log_messages))
             self.assertTrue(any("=" * 50 in msg for msg in log_messages))
             self.assertTrue(any("EMPLOYMENT:" in msg for msg in log_messages))
             self.assertTrue(any("Warning: Could not parse dates, proceeding with check" in msg for msg in log_messages))
             self.assertTrue(any("✗ No files found for test-company (monthly)" in msg for msg in log_messages))
             self.assertTrue(any("MISSING OR INCOMPLETE DOCUMENTS SUMMARY" in msg for msg in log_messages))
-            self.assertTrue(any("- test-company (monthly)" in msg for msg in log_messages))
 
     def test_find_config_file(self):
         """Test finding configuration files in various locations."""

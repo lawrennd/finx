@@ -755,23 +755,43 @@ class TaxDocumentChecker:
         
         return sorted(list(years))
 
-    def check_year(self, year):
+    def check_year(self, year, list_missing=False):
         """Check documents for a specific tax year.
+        
+        Args:
+            year (str): The tax year to check
+            list_missing (bool): If True, generate dummy filenames for missing files
         
         Returns:
             dict: A dictionary containing:
                 - Category-to-files mappings
                 - 'all_found': A boolean indicating whether all required documents were found
+                - 'missing_files': List of missing files with dummy filenames if list_missing=True
+                - 'found_files': List of found files
+                - 'errors': List of any errors encountered
         """
         self.logger.info(f"\nChecking documents for tax year {year}")
         self.logger.info("=" * 50 + "\n")
         
-        # Initialize results dictionary with all categories from required_patterns
+        # Initialize results dictionary
         results = {
-            category: [] for category in self.required_patterns.keys()
+            'year': year,
+            'missing_files': [],
+            'found_files': [],
+            'errors': [],
+            'all_found': True
         }
-        results['all_found'] = True
-        missing_documents = defaultdict(set)  # Changed to set to avoid duplicates
+        
+        # Add category mappings
+        for category in self.required_patterns.keys():
+            results[category] = []
+        
+        # Check if year directory exists
+        year_path = None
+        if self.base_path:
+            year_path = self.base_path / str(year)
+            if not year_path.exists() and list_missing:
+                year_path.mkdir(parents=True, exist_ok=True)
         
         # Process each category
         for category, patterns in self.required_patterns.items():
@@ -804,15 +824,36 @@ class TaxDocumentChecker:
                     # Add files to results if found
                     if matches:
                         results[category].extend(matches)
+                        results['found_files'].extend(matches)
                     else:
                         self.logger.warning(f"✗ No files found for {name} ({frequency})")
                         self.logger.warning(f"  Pattern used: {pattern}")
-                        # Add to missing documents if no files are found
-                        if category.startswith('bank_'):
-                            bank_name = name.split(' - ')[0]  # Get the bank name before the account type
-                            missing_documents[category].add(f"- {bank_name} ({frequency})")
-                        else:
-                            missing_documents[category].add(f"- {name} ({frequency})")
+                        
+                        # Generate dummy filename if requested
+                        if list_missing and year_path:
+                            # Extract the pattern format without the year
+                            pattern_without_year = pattern.replace(str(year), 'YYYY')
+                            
+                            # Generate dummy filename based on frequency
+                            if frequency in ['yearly', 'annual', 'once']:
+                                dummy_filename = f"{year}-12-31_{name.lower().replace(' ', '_')}.pdf"
+                                dummy_path = year_path / dummy_filename
+                                results['missing_files'].append(str(dummy_path))
+                                self.logger.info(f"  Generated dummy filename: {dummy_filename}")
+                            elif frequency == 'monthly':
+                                for month in range(1, 13):
+                                    dummy_filename = f"{year}-{month:02d}-28_{name.lower().replace(' ', '_')}.pdf"
+                                    dummy_path = year_path / dummy_filename
+                                    results['missing_files'].append(str(dummy_path))
+                                    self.logger.info(f"  Generated dummy filename: {dummy_filename}")
+                            elif frequency == 'quarterly':
+                                for quarter in range(1, 5):
+                                    month = (quarter * 3)
+                                    dummy_filename = f"{year}-{month:02d}-28_{name.lower().replace(' ', '_')}.pdf"
+                                    dummy_path = year_path / dummy_filename
+                                    results['missing_files'].append(str(dummy_path))
+                                    self.logger.info(f"  Generated dummy filename: {dummy_filename}")
+                        
                         results['all_found'] = False
                         continue
                     
@@ -824,25 +865,55 @@ class TaxDocumentChecker:
                             self.logger.info(f"✓ Found {found_count} files for {name} ({frequency})")
                         else:
                             self.logger.warning(f"✗ Found {found_count} files for {name} ({frequency}), expected {expected_count}")
-                            # For bank accounts, only add the bank name without account type
-                            if category.startswith('bank_'):
-                                bank_name = name.split(' - ')[0]  # Get the bank name before the account type
-                                missing_documents[category].add(f"- {bank_name} ({frequency})")
-                            else:
-                                missing_documents[category].add(f"- {name} ({frequency})")
+                            
+                            # Generate dummy filenames for missing documents if requested
+                            if list_missing and year_path:
+                                missing_count = expected_count - found_count
+                                if frequency == 'monthly':
+                                    # Find which months are missing
+                                    found_months = set()
+                                    for match in matches:
+                                        date_match = re.search(r'(\d{4})-(\d{2})', match)
+                                        if date_match:
+                                            found_months.add(int(date_match.group(2)))
+                                    
+                                    # Generate filenames for missing months
+                                    for month in range(1, 13):
+                                        if month not in found_months:
+                                            dummy_filename = f"{year}-{month:02d}-28_{name.lower().replace(' ', '_')}.pdf"
+                                            dummy_path = year_path / dummy_filename
+                                            results['missing_files'].append(str(dummy_path))
+                                            self.logger.info(f"  Generated dummy filename: {dummy_filename}")
+                                
+                                elif frequency == 'quarterly':
+                                    # Find which quarters are missing
+                                    found_quarters = set()
+                                    for match in matches:
+                                        date_match = re.search(r'(\d{4})-(\d{2})', match)
+                                        if date_match:
+                                            month = int(date_match.group(2))
+                                            quarter = (month - 1) // 3 + 1
+                                            found_quarters.add(quarter)
+                                    
+                                    # Generate filenames for missing quarters
+                                    for quarter in range(1, 5):
+                                        if quarter not in found_quarters:
+                                            month = (quarter * 3)
+                                            dummy_filename = f"{year}-{month:02d}-28_{name.lower().replace(' ', '_')}.pdf"
+                                            dummy_path = year_path / dummy_filename
+                                            results['missing_files'].append(str(dummy_path))
+                                            self.logger.info(f"  Generated dummy filename: {dummy_filename}")
+                            
                             results['all_found'] = False
         
-        # Print summary of missing documents if any
-        if missing_documents:
+        # Print summary of missing files if any
+        if results['missing_files']:
             self.logger.warning("\nMISSING OR INCOMPLETE DOCUMENTS SUMMARY:")
             self.logger.warning("=" * 50)
             self.logger.warning("")
-            
-            for category in sorted(missing_documents.keys()):
-                self.logger.warning(f"\n{category.upper()}:")
-                for doc in sorted(missing_documents[category]):
-                    self.logger.warning(doc)
-                self.logger.warning("")
+            for missing_file in sorted(results['missing_files']):
+                self.logger.warning(f"- {missing_file}")
+            self.logger.warning("")
         
         return results
 
@@ -878,6 +949,7 @@ def main():
     parser = argparse.ArgumentParser(description='Check tax documents for a specific year')
     parser.add_argument('--year', type=str, help='Specific year to check (e.g., 2023)')
     parser.add_argument('--update-dates', action='store_true', help='Update YAML with inferred dates')
+    parser.add_argument('--list-missing', action='store_true', help='Generate dummy filenames for missing files')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
     parser.add_argument('--log-level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], 
                         default='INFO', help='Set the logging level')
@@ -911,7 +983,7 @@ def main():
     if args.year:
         if args.verbose:
             logger.info(f"Checking documents for year {args.year}")
-        checker.check_year(args.year)
+        checker.check_year(args.year, list_missing=args.list_missing)
     else:
         available_years = checker.list_available_years()
         logger.info(f"Available tax years: {', '.join(available_years)}")
@@ -920,7 +992,7 @@ def main():
             logger.info(f"Checking documents for all available years: {available_years}")
         
         for year in available_years:
-            checker.check_year(year)
+            checker.check_year(year, list_missing=args.list_missing)
 
 if __name__ == "__main__":
     main() 
