@@ -25,6 +25,8 @@ This tool helps you track and validate your tax documents by checking for the pr
 - Support for annual summary documents (P60, 1099, etc.)
 - Automatic detection of account start and end dates
 - Separation of public and private configuration
+- Multiple output formats (text, JSON, CSV)
+- Detailed logging with configurable verbosity
 
 ## Installation
 
@@ -57,46 +59,133 @@ Note: To install from the private repository, you need:
 
 To check all available tax years:
 ```bash
-tax-document-checker
+tax-assistant
 ```
 
 To check a specific tax year:
 ```bash
-tax-document-checker --year 2023
+tax-assistant --year 2023
 ```
 
 To update the YAML configuration with inferred dates:
 ```bash
-tax-document-checker --update-dates
+tax-assistant --update-dates
 ```
 
 To specify a custom base path for tax documents:
 ```bash
-tax-document-checker --base-path /path/to/tax/documents
+tax-assistant --base-path /path/to/tax/documents
 ```
 
 To show detailed information about configuration loading and file searching:
 ```bash
-tax-document-checker --verbose
+tax-assistantr --verbose
+```
+
+To list missing files:
+```bash
+tax-assistant --list-missing
+```
+
+To output results in JSON format:
+```bash
+tax-assistant --format json
+```
+
+To output results in CSV format:
+```bash
+tax-assistant --format csv
+```
+
+To check compliance without listing files:
+```bash
+tax-assistant --no-list
+```
+
+To enable console output for logging:
+```bash
+tax-assistant --console-output
+```
+
+To specify a custom log file:
+```bash
+tax-assistant --log-file custom.log
 ```
 
 Note: If you installed using Poetry for development, prefix the commands with `poetry run`:
 ```bash
-poetry run tax-document-checker
+poetry run tax-assistant
 ```
 
-The tool returns the following exit codes:
+## Configuration
+
+The tool uses two YAML configuration files to separate public patterns from private account information:
+
+### Base Configuration (tax_document_patterns_base.yml)
+
+Contains public patterns and configurations that can be shared and version controlled:
+
+```yaml
+employment:
+  patterns:
+    payslip:
+      base: payslip
+      frequency: monthly
+      annual_document_type: P60
+    p45:
+      base: p45
+      frequency: once
+    p60:
+      base: p60
+      frequency: yearly
+
+investment:
+  us:
+    patterns:
+      1099_div:
+        base: 1099-div
+        frequency: yearly
+```
+
+### Private Configuration (tax_document_patterns_private.yml)
+
+Contains account-specific information and should NOT be committed to version control:
+
+```yaml
+employment:
+  current:
+    - name: "EXAMPLE_EMPLOYER"  # Replace with actual employer name
+      patterns:
+        - base: example-employer  # Replace with actual pattern
+      frequency: monthly
+      annual_document_type: P60
+      start_date: '2020-01-01'  # Replace with actual date
+      end_date: null  # null for current employment
+```
+
+### Directory Mapping (directory_mapping.yml)
+
+Defines where different document types are stored:
+
+```yaml
+directory_mapping:
+  employment: 
+    - payslips
+  investment_us: 
+    - investments/us
+  investment_uk: 
+    - investments/uk
+  bank_uk: 
+    - banking/uk
+    - UK-savings
+  bank_us: 
+    - banking/us
+  additional: 
+    - tax/us
+    - tax/uk
+```
 
 ## Exit Codes
-
-- `0`: Success
-- `1`: General error
-- `2`: Configuration error
-- `3`: File system error
-
-## Additional Notes
-
-The tool returns the following exit codes:
 
 - `0`: Success
 - `1`: General error

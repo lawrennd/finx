@@ -8,17 +8,47 @@ This document explains how to use the Tax Document Checker tool.
 
 1. Check all available tax years:
    ```
-   poetry run tax-document-checker
+   tax-assistant
    ```
 
 2. Check a specific tax year:
    ```
-   poetry run tax-document-checker --year 2023
+   tax-assistant --year 2023
    ```
 
 3. Update the YAML configuration with inferred dates:
    ```
-   poetry run tax-document-checker --update-dates
+   tax-assistant --update-dates
+   ```
+
+4. List missing files:
+   ```
+   tax-assistant --list-missing
+   ```
+
+5. Output results in JSON format:
+   ```
+   tax-assistant --format json
+   ```
+
+6. Output results in CSV format:
+   ```
+   tax-assistant --format csv
+   ```
+
+7. Check compliance without listing files:
+   ```
+   tax-assistant --no-list
+   ```
+
+8. Enable console output for logging:
+   ```
+   tax-assistant --console-output
+   ```
+
+9. Specify a custom log file:
+   ```
+   tax-assistant --log-file custom.log
    ```
 
 ### Command Line Arguments
@@ -28,12 +58,18 @@ This document explains how to use the Tax Document Checker tool.
 | `--year` | Specific year to check (e.g., 2023) |
 | `--update-dates` | Update YAML with inferred dates |
 | `--base-path` | Base path for tax documents (default: current directory) |
+| `--verbose`, `-v` | Enable verbose output for debugging |
+| `--log-file` | Path to log file (default: tax_document_checker.log) |
+| `--console-output` | Enable logging output to console |
+| `--no-list` | Skip file listing and only check compliance |
+| `--format` | Output format for file listing (choices: text, json, csv, default: text) |
+| `--list-missing` | List missing files |
 
 ## Configuration
 
-The tool uses two YAML configuration files to separate public patterns from private account information:
+The tool uses three YAML configuration files:
 
-### Base Configuration (tax_document_patterns_base.yaml)
+### Base Configuration (tax_document_patterns_base.yml)
 
 Contains public patterns and configurations that can be shared and version controlled:
 
@@ -59,7 +95,7 @@ investment:
         frequency: yearly
 ```
 
-### Private Configuration (tax_document_patterns_private.yaml)
+### Private Configuration (tax_document_patterns_private.yml)
 
 Contains account-specific information and should NOT be committed to version control:
 
@@ -73,6 +109,28 @@ employment:
       annual_document_type: P60
       start_date: '2020-01-01'  # Replace with actual date
       end_date: null  # null for current employment
+```
+
+### Directory Mapping (directory_mapping.yml)
+
+Defines where different document types are stored:
+
+```yaml
+directory_mapping:
+  employment: 
+    - payslips
+  investment_us: 
+    - investments/us
+  investment_uk: 
+    - investments/uk
+  bank_uk: 
+    - banking/uk
+    - UK-savings
+  bank_us: 
+    - banking/us
+  additional: 
+    - tax/us
+    - tax/uk
 ```
 
 The tool will merge both configurations at runtime, with private patterns taking precedence over base patterns when there are conflicts.
@@ -227,12 +285,16 @@ For more detailed testing guidelines and best practices, refer to the [Testing G
 
 ### Debugging
 
-For more detailed output, you can modify the script to add debug logging:
+For more detailed output, you can use the `--verbose` flag:
 
-```python
-import logging
+```bash
+tax-assistant --verbose
+```
 
-logging.basicConfig(level=logging.DEBUG)
+Or enable console output for logging:
+
+```bash
+tax-assistant --console-output
 ```
 
 ## Advanced Usage
@@ -241,12 +303,12 @@ logging.basicConfig(level=logging.DEBUG)
 
 You can customize the document patterns in both YAML files:
 
-- Base patterns (tax_document_patterns_base.yaml):
+- Base patterns (tax_document_patterns_base.yml):
   - Standard document types (P60, 1099, etc.)
   - Common frequencies
   - Generic patterns
 
-- Private patterns (tax_document_patterns_private.yaml):
+- Private patterns (tax_document_patterns_private.yml):
   - Account-specific names and identifiers
   - Start and end dates
   - Custom patterns for specific institutions
@@ -255,8 +317,8 @@ You can customize the document patterns in both YAML files:
 
 To add a new document type:
 
-1. Add the generic pattern to tax_document_patterns_base.yaml
-2. Add account-specific information to tax_document_patterns_private.yaml
+1. Add the generic pattern to tax_document_patterns_base.yml
+2. Add account-specific information to tax_document_patterns_private.yml
 3. Create the appropriate directory structure
 4. Run the script to verify the new document type is recognized
 
