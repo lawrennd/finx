@@ -836,20 +836,22 @@ class TaxDocumentChecker:
                             
                             # Generate dummy filename based on frequency
                             if frequency in ['yearly', 'annual', 'once']:
-                                dummy_filename = f"{year}-12-31_{name.lower().replace(' ', '_')}.pdf"
+                                # For yearly files, just use the year without month and day
+                                dummy_filename = f"{year}_{name.lower().replace(' ', '_')}.pdf"
                                 dummy_path = year_path / dummy_filename
                                 results['missing_files'].append(str(dummy_path))
                                 self.logger.info(f"  Generated dummy filename: {dummy_filename}")
                             elif frequency == 'monthly':
+                                # For monthly files, include month but omit day
                                 for month in range(1, 13):
-                                    dummy_filename = f"{year}-{month:02d}-28_{name.lower().replace(' ', '_')}.pdf"
+                                    dummy_filename = f"{year}-{month:02d}_{name.lower().replace(' ', '_')}.pdf"
                                     dummy_path = year_path / dummy_filename
                                     results['missing_files'].append(str(dummy_path))
                                     self.logger.info(f"  Generated dummy filename: {dummy_filename}")
                             elif frequency == 'quarterly':
+                                # For quarterly files, use Q1, Q2, Q3, Q4
                                 for quarter in range(1, 5):
-                                    month = (quarter * 3)
-                                    dummy_filename = f"{year}-{month:02d}-28_{name.lower().replace(' ', '_')}.pdf"
+                                    dummy_filename = f"{year}-Q{quarter}_{name.lower().replace(' ', '_')}.pdf"
                                     dummy_path = year_path / dummy_filename
                                     results['missing_files'].append(str(dummy_path))
                                     self.logger.info(f"  Generated dummy filename: {dummy_filename}")
@@ -880,7 +882,7 @@ class TaxDocumentChecker:
                                     # Generate filenames for missing months
                                     for month in range(1, 13):
                                         if month not in found_months:
-                                            dummy_filename = f"{year}-{month:02d}-28_{name.lower().replace(' ', '_')}.pdf"
+                                            dummy_filename = f"{year}-{month:02d}_{name.lower().replace(' ', '_')}.pdf"
                                             dummy_path = year_path / dummy_filename
                                             results['missing_files'].append(str(dummy_path))
                                             self.logger.info(f"  Generated dummy filename: {dummy_filename}")
@@ -898,8 +900,7 @@ class TaxDocumentChecker:
                                     # Generate filenames for missing quarters
                                     for quarter in range(1, 5):
                                         if quarter not in found_quarters:
-                                            month = (quarter * 3)
-                                            dummy_filename = f"{year}-{month:02d}-28_{name.lower().replace(' ', '_')}.pdf"
+                                            dummy_filename = f"{year}-Q{quarter}_{name.lower().replace(' ', '_')}.pdf"
                                             dummy_path = year_path / dummy_filename
                                             results['missing_files'].append(str(dummy_path))
                                             self.logger.info(f"  Generated dummy filename: {dummy_filename}")

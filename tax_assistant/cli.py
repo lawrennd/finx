@@ -129,7 +129,19 @@ def list_missing_files(checker, year=None, output_format='text'):
             writer = csv.DictWriter(sys.stdout, fieldnames=files[0].keys())
             writer.writeheader()
             writer.writerows(files)
+        else:
+            # Write empty CSV with default headers
+            writer = csv.DictWriter(sys.stdout, fieldnames=['year', 'path', 'status'])
+            writer.writeheader()
     else:  # text format
+        if not years_to_check:
+            print("\nNo tax years found in the directory.")
+            return
+        
+        if not files:
+            print("\nNo missing files found.")
+            return
+        
         current_year = None
         
         for file in files:
