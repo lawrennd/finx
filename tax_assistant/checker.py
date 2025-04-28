@@ -114,8 +114,8 @@ class TaxDocumentChecker:
                 return str(default_path)
             
             # Find config files in order of precedence
-            self.config_file = find_config_file('tax_document_patterns_base.yml', config_file)
-            self.private_config_file = find_config_file('tax_document_patterns_private.yml', private_config_file)
+            self.config_file = find_config_file('finx_base.yml', config_file)
+            self.private_config_file = find_config_file('finx_private.yml', private_config_file)
             self.directory_mapping_file = find_config_file('directory_mapping.yml', directory_mapping_file)
             
             if self.verbose:
@@ -239,8 +239,8 @@ class TaxDocumentChecker:
         return merged
 
     def save_config(self, config, is_private=True):
-        """Save configuration to appropriate YAML file."""
-        filename = 'tax_document_patterns_private.yml' if is_private else 'tax_document_patterns_base.yml'
+        """Save the configuration back to the YAML file."""
+        filename = 'finx_private.yml' if is_private else 'finx_base.yml'
         config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
         with open(config_path, 'w') as f:
             yaml.dump(config, f, sort_keys=False, default_flow_style=False)

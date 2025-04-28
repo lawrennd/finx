@@ -102,7 +102,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
 
     def test_load_private_config_yaml_error(self):
         """Test handling of YAML parsing errors in private configuration."""
-        private_config_path = os.path.join(self.temp_dir, 'tax_document_patterns_dummy.yml')
+        private_config_path = os.path.join(self.temp_dir, 'finx_dummy.yml')
         with open(private_config_path, 'w') as f:
             f.write('invalid: yaml: content: {')
         
@@ -450,7 +450,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
                 self.checker.save_config(test_config, is_private=True)
                 mock_file.assert_called_once()
                 # Verify the correct filename was used
-                self.assertIn('tax_document_patterns_private.yml', mock_file.call_args[0][0])
+                self.assertIn('finx_private.yml', mock_file.call_args[0][0])
 
         # Test saving base config
         with patch('os.path.dirname') as mock_dirname:
@@ -459,7 +459,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
                 self.checker.save_config(test_config, is_private=False)
                 mock_file.assert_called_once()
                 # Verify the correct filename was used
-                self.assertIn('tax_document_patterns_base.yml', mock_file.call_args[0][0])
+                self.assertIn('finx_base.yml', mock_file.call_args[0][0])
 
     def test_merge_configs_with_complex_data(self):
         """Test merging configurations with complex nested data."""
@@ -950,7 +950,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
 
     def test_load_private_config_file_not_found(self):
         """Test loading private config when file doesn't exist."""
-        self.checker.private_config_file = '/nonexistent/path/tax_document_patterns_dummy.yml'
+        self.checker.private_config_file = '/nonexistent/path/finx_dummy.yml'
         config = self.checker.load_private_config()
         self.assertEqual(config, {})
 
@@ -1022,8 +1022,8 @@ class TestTaxDocumentChecker(unittest.TestCase):
         }
         
         # Create both files in the temp directory
-        private_config_path = os.path.join(self.temp_dir, 'tax_document_patterns_private.yml')
-        dummy_config_path = os.path.join(self.temp_dir, 'tax_document_patterns_dummy.yml')
+        private_config_path = os.path.join(self.temp_dir, 'finx_private.yml')
+        dummy_config_path = os.path.join(self.temp_dir, 'finx_dummy.yml')
         
         with open(private_config_path, 'w') as f:
             yaml.dump(private_config_data, f)

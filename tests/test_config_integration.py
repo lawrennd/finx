@@ -13,8 +13,8 @@ class TestConfigIntegration:
         """Set up the test environment."""
         # Find configuration files
         self.base_path = Path(os.path.dirname(os.path.dirname(__file__)))
-        self.base_config_file = self.base_path / "tax_document_patterns_base.yml"
-        self.dummy_config_file = self.base_path / "tax_document_patterns_dummy.yml"
+        self.base_config_file = self.base_path / "finx_base.yml"
+        self.dummy_config_file = self.base_path / "finx_dummy.yml"
         self.directory_mapping_file = self.base_path / "directory_mapping.yml"
         
         # Load configuration files

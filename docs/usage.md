@@ -268,7 +268,7 @@ finx savings update "New Car" --current 5000
 
 The tool uses three YAML configuration files:
 
-### Base Configuration (tax_document_patterns_base.yml)
+### Base Configuration (finx_base.yml)
 
 Contains public patterns and configurations that can be shared and version controlled:
 
@@ -295,7 +295,7 @@ tax:
           frequency: yearly
 ```
 
-### Private Configuration (tax_document_patterns_private.yml)
+### Private Configuration (finx_private.yml)
 
 Contains account-specific information and should NOT be committed to version control:
 
