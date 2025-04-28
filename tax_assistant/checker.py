@@ -12,7 +12,7 @@ from typing import Optional
 # Configure logging
 def setup_logging(log_level=logging.INFO):
     """Set up logging configuration."""
-    log_file = Path('tax_document_checker.log')
+    log_file = Path('tax_assistant.log')
     
     # Create a formatter
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
