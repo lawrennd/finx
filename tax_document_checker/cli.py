@@ -3,8 +3,90 @@
 import argparse
 import sys
 import logging
+import json
+import csv
 from pathlib import Path
-from .checker import TaxDocumentChecker, setup_logging
+from datetime import datetime
+from .checker import TaxDocumentChecker
+
+def setup_logging(log_file=None, verbose=False, console_output=False):
+    """Set up logging configuration."""
+    if log_file is None:
+        log_file = 'tax_document_checker.log'
+    
+    # Create handlers list starting with file handler
+    handlers = [logging.FileHandler(log_file)]
+    
+    # Add console handler only if console_output is True
+    if console_output:
+        handlers.append(logging.StreamHandler(sys.stdout))
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.DEBUG if verbose else logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=handlers
+    )
+    return logging.getLogger(__name__)
+
+def list_files(checker, year=None, output_format='text'):
+    """List all files found by the checker in the specified format."""
+    files = []
+    
+    # Get all years to check
+    years_to_check = [year] if year else checker.list_available_years()
+    
+    for year in years_to_check:
+        # Get all patterns from the checker
+        for category, patterns in checker.required_patterns.items():
+            for pattern_info in patterns:
+                pattern = pattern_info['pattern']
+                name = pattern_info['name']
+                
+                # Find matching files
+                matches = checker.find_files_matching_pattern(pattern, year=year, category=category)
+                
+                for file_path in matches:
+                    file_info = {
+                        'year': year,
+                        'category': category,
+                        'name': name,
+                        'path': str(file_path),
+                        'size': Path(file_path).stat().st_size,
+                        'modified': datetime.fromtimestamp(Path(file_path).stat().st_mtime).isoformat()
+                    }
+                    files.append(file_info)
+    
+    # Sort files by year, category, and name
+    files.sort(key=lambda x: (x['year'], x['category'], x['name']))
+    
+    # Output in requested format
+    if output_format == 'json':
+        print(json.dumps(files, indent=2))
+    elif output_format == 'csv':
+        if files:
+            writer = csv.DictWriter(sys.stdout, fieldnames=files[0].keys())
+            writer.writeheader()
+            writer.writerows(files)
+    else:  # text format
+        current_year = None
+        current_category = None
+        
+        for file in files:
+            # Print year header if it's a new year
+            if file['year'] != current_year:
+                current_year = file['year']
+                print(f"\nYear: {current_year}")
+                current_category = None
+            
+            # Print category header if it's a new category
+            if file['category'] != current_category:
+                current_category = file['category']
+                print(f"\n  {current_category}:")
+            
+            # Print file info
+            size_mb = file['size'] / (1024 * 1024)  # Convert to MB
+            print(f"    {Path(file['path']).name} ({size_mb:.2f} MB)")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -12,47 +94,53 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Check all available tax years
+  # List all files found (default behavior)
   tax-document-checker
   
-  # Check a specific tax year
+  # List files in JSON format
+  tax-document-checker --format json
+  
+  # List files in CSV format
+  tax-document-checker --format csv
+  
+  # List files for a specific year
   tax-document-checker --year 2023
   
+  # Check compliance without listing files
+  tax-document-checker --no-list
+  
   # Update YAML with inferred dates
-  tax-document-checker --update-dates
+  tax-document-checker --update-dates --no-list
   
   # Check with verbose output
   tax-document-checker --verbose
-  
-  # Check documents in a specific directory
-  tax-document-checker --base-path /path/to/documents
-  
-  # Set logging level
-  tax-document-checker --log-level DEBUG
         """
     )
     parser.add_argument('--year', type=str, help='Specific tax year to check (e.g., 2023)')
     parser.add_argument('--update-dates', action='store_true', help='Update YAML with inferred dates from filenames')
     parser.add_argument('--base-path', type=str, default='.', help='Base path for tax documents (default: current directory)')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output for debugging')
-    parser.add_argument('--log-level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], 
-                        default='INFO', help='Set the logging level')
+    parser.add_argument('--log-file', type=str, help='Path to log file (default: tax_document_checker.log)')
+    parser.add_argument('--console-output', action='store_true', help='Enable logging output to console')
+    parser.add_argument('--no-list', action='store_true', help='Disable file listing (default: list files)')
+    parser.add_argument('--format', choices=['text', 'json', 'csv'], default='text', 
+                      help='Output format for file listing (default: text)')
     
     args = parser.parse_args()
     
     # Set up logging
-    log_level = getattr(logging, args.log_level)
-    logger = setup_logging(log_level)
-    
-    # If verbose is set, override the log level to DEBUG
-    if args.verbose:
-        logger.setLevel(logging.DEBUG)
+    logger = setup_logging(args.log_file, args.verbose, args.console_output)
     
     logger.info("Initializing TaxDocumentChecker...")
     logger.debug(f"Base path: {args.base_path}")
     
     # Initialize checker
     checker = TaxDocumentChecker(args.base_path, verbose=args.verbose)
+    
+    # List files by default unless --no-list is specified
+    if not args.no_list:
+        list_files(checker, args.year, args.format)
+        return 0
     
     # Update dates if requested
     if args.update_dates:
@@ -81,8 +169,7 @@ Examples:
     all_found = True
     for year in years:
         logger.info(f"Processing year {year}...")
-        result = checker.check_year(year)
-        if not result:
+        if not checker.check_year(year):
             all_found = False
     
     logger.info("Document check complete!")
