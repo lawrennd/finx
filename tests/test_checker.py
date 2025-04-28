@@ -10,10 +10,12 @@ from datetime import datetime
 from io import StringIO
 from contextlib import redirect_stdout
 import logging
+import pytest
+from tax_document_lister.checker import TaxDocumentChecker
 
 # Add the parent directory to the path so we can import the script
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from tax_document_checker.checker import TaxDocumentChecker, FREQUENCY_EXPECTATIONS
+from tax_document_lister.checker import TaxDocumentChecker, FREQUENCY_EXPECTATIONS
 
 class TestTaxDocumentChecker(unittest.TestCase):
     def setUp(self):
@@ -402,7 +404,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
                 with patch.object(TaxDocumentChecker, 'check_year') as mock_check:
                     mock_check.return_value = True
                     with patch('os.path.dirname', return_value='/test/path'):
-                        from tax_document_checker.checker import main
+                        from tax_document_lister.checker import main
                         main()
                         mock_check.assert_called_once_with('2023')
 
@@ -414,7 +416,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
                 mock_args.return_value = MagicMock(year=None, update_dates=True, log_level='INFO')
                 with patch.object(TaxDocumentChecker, 'update_yaml_with_dates') as mock_update:
                     with patch('os.path.dirname', return_value='/test/path'):
-                        from tax_document_checker.checker import main
+                        from tax_document_lister.checker import main
                         main()
                         mock_update.assert_called_once()
 
@@ -427,7 +429,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
                     mock_list.return_value = ['2022', '2023']
                     with patch.object(TaxDocumentChecker, 'check_year') as mock_check:
                         with patch('os.path.dirname', return_value='/test/path'):
-                            from tax_document_checker.checker import main
+                            from tax_document_lister.checker import main
                             main()
                             assert mock_check.call_count == 2
                             mock_check.assert_has_calls([

@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from unittest import TestCase
-from tax_document_checker.cli import main
+from tax_document_lister.cli import main
 import sys
 import logging
 from pathlib import Path
@@ -22,8 +22,8 @@ class TestCLI(TestCase):
 
     def test_cli_default_behavior(self):
         """Test CLI default behavior (listing files)."""
-        with patch('sys.argv', ['tax-document-checker']):
-            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+        with patch('sys.argv', ['tax-document-lister']):
+            with patch('tax_document_lister.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
                 mock_instance.list_available_years.return_value = ['2023']
@@ -39,8 +39,8 @@ class TestCLI(TestCase):
 
     def test_cli_with_year(self):
         """Test CLI with specific year argument."""
-        with patch('sys.argv', ['tax-document-checker', '--year', '2023', '--no-list']):
-            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+        with patch('sys.argv', ['tax-document-lister', '--year', '2023', '--no-list']):
+            with patch('tax_document_lister.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
                 mock_instance.check_year.return_value = True
@@ -57,8 +57,8 @@ class TestCLI(TestCase):
 
     def test_cli_with_update_dates(self):
         """Test CLI with update-dates flag."""
-        with patch('sys.argv', ['tax-document-checker', '--update-dates', '--no-list']):
-            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+        with patch('sys.argv', ['tax-document-lister', '--update-dates', '--no-list']):
+            with patch('tax_document_lister.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
                 
@@ -75,8 +75,8 @@ class TestCLI(TestCase):
 
     def test_cli_with_base_path(self):
         """Test CLI with base path without verbose flag."""
-        with patch('sys.argv', ['tax-document-checker', '--base-path', '/test/path', '--no-list']):
-            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+        with patch('sys.argv', ['tax-document-lister', '--base-path', '/test/path', '--no-list']):
+            with patch('tax_document_lister.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
                 mock_instance.list_available_years.return_value = ['2023']
@@ -95,8 +95,8 @@ class TestCLI(TestCase):
 
     def test_cli_with_base_path_verbose(self):
         """Test CLI with base path and verbose flag."""
-        with patch('sys.argv', ['tax-document-checker', '--base-path', '/test/path', '--verbose', '--no-list']):
-            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+        with patch('sys.argv', ['tax-document-lister', '--base-path', '/test/path', '--verbose', '--no-list']):
+            with patch('tax_document_lister.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
                 mock_instance.list_available_years.return_value = ['2023']
@@ -116,8 +116,8 @@ class TestCLI(TestCase):
 
     def test_cli_with_failed_check(self):
         """Test CLI with failed document check."""
-        with patch('sys.argv', ['tax-document-checker', '--year', '2023', '--no-list']):
-            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+        with patch('sys.argv', ['tax-document-lister', '--year', '2023', '--no-list']):
+            with patch('tax_document_lister.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
                 mock_instance.check_year.return_value = False
@@ -132,7 +132,7 @@ class TestCLI(TestCase):
 
     def test_cli_with_no_years(self):
         """Test CLI when no arguments are provided - should show help message."""
-        with patch('sys.argv', ['tax-document-checker']):
+        with patch('sys.argv', ['tax-document-lister']):
             with patch('argparse.ArgumentParser.parse_args') as mock_args:
                 mock_args.side_effect = SystemExit(0)  # Simulate argparse's help behavior
                 with pytest.raises(SystemExit) as exc_info:
@@ -141,8 +141,8 @@ class TestCLI(TestCase):
 
     def test_cli_with_no_years_found(self):
         """Test CLI when no tax years are found in the directory."""
-        with patch('sys.argv', ['tax-document-checker', '--base-path', '/empty/path', '--no-list']):
-            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+        with patch('sys.argv', ['tax-document-lister', '--base-path', '/empty/path', '--no-list']):
+            with patch('tax_document_lister.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
                 mock_instance.list_available_years.return_value = []
@@ -159,8 +159,8 @@ class TestCLI(TestCase):
 
     def test_cli_with_verbose_output(self):
         """Test CLI with verbose output for various operations."""
-        with patch('sys.argv', ['tax-document-checker', '--verbose', '--no-list']):
-            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+        with patch('sys.argv', ['tax-document-lister', '--verbose', '--no-list']):
+            with patch('tax_document_lister.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
                 mock_instance.list_available_years.return_value = ['2023']
@@ -181,8 +181,8 @@ class TestCLI(TestCase):
 
     def test_cli_with_verbose_update_dates(self):
         """Test CLI with verbose output for update dates operation."""
-        with patch('sys.argv', ['tax-document-checker', '--update-dates', '--verbose', '--no-list']):
-            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+        with patch('sys.argv', ['tax-document-lister', '--update-dates', '--verbose', '--no-list']):
+            with patch('tax_document_lister.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
                 
@@ -197,8 +197,8 @@ class TestCLI(TestCase):
 
     def test_cli_with_json_format(self):
         """Test CLI with JSON output format."""
-        with patch('sys.argv', ['tax-document-checker', '--format', 'json']):
-            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+        with patch('sys.argv', ['tax-document-lister', '--format', 'json']):
+            with patch('tax_document_lister.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
                 mock_instance.list_available_years.return_value = ['2023']
@@ -214,8 +214,8 @@ class TestCLI(TestCase):
 
     def test_cli_with_csv_format(self):
         """Test CLI with CSV output format."""
-        with patch('sys.argv', ['tax-document-checker', '--format', 'csv']):
-            with patch('tax_document_checker.cli.TaxDocumentChecker') as mock_checker:
+        with patch('sys.argv', ['tax-document-lister', '--format', 'csv']):
+            with patch('tax_document_lister.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
                 mock_instance.list_available_years.return_value = ['2023']
