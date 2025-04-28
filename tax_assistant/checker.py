@@ -194,42 +194,33 @@ class TaxDocumentChecker:
         # Start with a deep copy of the base config
         merged = yaml.safe_load(yaml.dump(self.base_config))  # Deep copy
         
-        # Merge with private patterns
-        if self.private_config:
-            for category in self.private_config:
-                if category not in merged:
-                    merged[category] = self.private_config[category]
+        # Define a recursive update function
+        def recursive_update(base, update):
+            for key, value in update.items():
+                # If the value is a list, always extend the existing list
+                if isinstance(value, list):
+                    if key not in base:
+                        base[key] = value
+                    elif isinstance(base[key], list):
+                        base[key].extend(value)  # Always extend lists
+                    else:
+                        base[key] = value
+                # If the value is a dictionary, update recursively
+                elif isinstance(value, dict):
+                    if key not in base:
+                        base[key] = {}
+                    if isinstance(base[key], dict):
+                        recursive_update(base[key], value)
+                    else:
+                        base[key] = value
+                # For scalar values, simply update
                 else:
-                    # Handle categories that are lists (like employment categories)
-                    if isinstance(self.private_config[category], list):
-                        if isinstance(merged[category], list):
-                            merged[category].extend(self.private_config[category])
-                        else:
-                            merged[category] = self.private_config[category]
-                    # Handle categories that are dictionaries (like investment and bank)
-                    elif isinstance(self.private_config[category], dict):
-                        if not isinstance(merged[category], dict):
-                            merged[category] = {}
-                        for key, value in self.private_config[category].items():
-                            if key not in merged[category]:
-                                merged[category][key] = value
-                            else:
-                                # If both are lists, extend
-                                if isinstance(value, list) and isinstance(merged[category][key], list):
-                                    merged[category][key].extend(value)
-                                # If both are dicts, merge recursively
-                                elif isinstance(value, dict) and isinstance(merged[category][key], dict):
-                                    for subkey, subvalue in value.items():
-                                        if subkey in merged[category][key] and isinstance(subvalue, list):
-                                            if isinstance(merged[category][key][subkey], list):
-                                                merged[category][key][subkey].extend(subvalue)
-                                            else:
-                                                merged[category][key][subkey] = subvalue
-                                        else:
-                                            merged[category][key][subkey] = subvalue
-                                # Otherwise, overwrite
-                                else:
-                                    merged[category][key] = value
+                    base[key] = value
+            return base
+        
+        # Apply the private config as an update to the base config
+        if self.private_config:
+            merged = recursive_update(merged, self.private_config)
         
         # Ensure investment and bank categories have proper structure
         for category in ['investment', 'bank']:
@@ -446,11 +437,43 @@ class TaxDocumentChecker:
         if not self.config:
             self.logger.info("No config found, returning empty patterns")
             return patterns
+        
+        def process_pattern(pattern, item_info, category_key):
+            """Process a pattern and add it to the appropriate category."""
+            if pattern is None:
+                return
+                
+            # Build full pattern if it's a dictionary
+            if isinstance(pattern, dict):
+                full_pattern = self.build_pattern(
+                    pattern.get('base', ''),
+                    suffix=pattern.get('suffix'),
+                    account_type=pattern.get('account_type'),
+                    identifiers=pattern.get('identifiers')
+                )
+            else:
+                full_pattern = pattern
+                
+            # Get default frequency based on category
+            default_frequency = 'yearly'  # Default for most categories
+            if category_key in ['employment', 'bank_uk', 'bank_us']:
+                default_frequency = 'monthly'
+                
+            # Create the pattern dictionary with all metadata
+            pattern_dict = {
+                'pattern': full_pattern,
+                'name': item_info.get('name', category_key),
+                'frequency': item_info.get('frequency', default_frequency),
+                'start_date': pattern.get('start_date', item_info.get('start_date')) if isinstance(pattern, dict) else item_info.get('start_date'),
+                'end_date': pattern.get('end_date', item_info.get('end_date')) if isinstance(pattern, dict) else item_info.get('end_date'),
+                'url': item_info.get('url')
+            }
+            
+            patterns[category_key].append(pattern_dict)
 
-        self.logger.info("Processing employment patterns...")
         # Process employment patterns
         if 'employment' in self.config:
-            # Handle both list and dictionary formats for employment
+            self.logger.info("Processing employment patterns...")
             if isinstance(self.config['employment'], list):
                 # Direct list of employment records
                 for employer in self.config['employment']:
@@ -463,6 +486,9 @@ class TaxDocumentChecker:
                             'end_date': employer.get('end_date'),
                             'url': employer.get('url')
                         })
+                    elif 'patterns' in employer and employer['patterns']:
+                        for pattern in employer['patterns']:
+                            process_pattern(pattern, employer, 'employment')
             else:
                 # Dictionary format with categories
                 for category in self.config['employment']:
@@ -470,28 +496,11 @@ class TaxDocumentChecker:
                     for employer in self.config['employment'][category]:
                         if 'patterns' in employer and employer['patterns']:
                             for pattern in employer['patterns']:
-                                if pattern is not None:
-                                    if isinstance(pattern, dict):
-                                        full_pattern = self.build_pattern(
-                                            pattern.get('base', ''),
-                                            suffix=pattern.get('suffix'),
-                                            identifiers=pattern.get('identifiers')
-                                        )
-                                    else:
-                                        full_pattern = pattern
-                                    
-                                    patterns['employment'].append({
-                                        'pattern': full_pattern,
-                                        'name': employer['name'],
-                                        'frequency': employer['frequency'],
-                                        'start_date': employer.get('start_date'),
-                                        'end_date': employer.get('end_date'),
-                                        'url': employer.get('url')
-                                    })
+                                process_pattern(pattern, employer, 'employment')
 
-        self.logger.info("Processing investment patterns...")
         # Process investment patterns
         if 'investment' in self.config:
+            self.logger.info("Processing investment patterns...")
             for region in ['uk', 'us']:
                 if region in self.config['investment']:
                     self.logger.info(f"Processing investment region: {region}")
@@ -501,33 +510,16 @@ class TaxDocumentChecker:
                             patterns[f'investment_{region}'].append({
                                 'pattern': account,
                                 'name': f'investment_{region}',
-                                'frequency': 'yearly',  # Default frequency for investments
+                                'frequency': 'yearly',
                                 'url': None
                             })
                         elif isinstance(account, dict) and 'patterns' in account and account['patterns']:
                             for pattern in account['patterns']:
-                                if pattern is not None:
-                                    if isinstance(pattern, dict):
-                                        full_pattern = self.build_pattern(
-                                            pattern.get('base', ''),
-                                            suffix=pattern.get('suffix'),
-                                            account_type=pattern.get('account_type'),
-                                            identifiers=pattern.get('identifiers')
-                                        )
-                                    else:
-                                        full_pattern = pattern
-                                    patterns[f'investment_{region}'].append({
-                                        'pattern': full_pattern,
-                                        'name': account.get('name', f'investment_{region}'),
-                                        'frequency': account.get('frequency', 'yearly'),
-                                        'start_date': account.get('start_date'),
-                                        'end_date': account.get('end_date'),
-                                        'url': account.get('url')
-                                    })
+                                process_pattern(pattern, account, f'investment_{region}')
 
-        self.logger.info("Processing bank patterns...")
         # Process bank patterns
         if 'bank' in self.config:
+            self.logger.info("Processing bank patterns...")
             for region in ['uk', 'us']:
                 if region in self.config['bank']:
                     self.logger.info(f"Processing bank region: {region}")
@@ -537,86 +529,39 @@ class TaxDocumentChecker:
                             patterns[f'bank_{region}'].append({
                                 'pattern': bank,
                                 'name': f'bank_{region}',
-                                'frequency': 'monthly',  # Default frequency for bank statements
+                                'frequency': 'monthly',
                                 'url': None
                             })
                         elif isinstance(bank, dict):
-                            self.logger.info(f"Processing bank: {bank.get('name', 'unknown')}")
                             # Process account types if present
                             account_types = bank.get('account_types')
                             if account_types is not None:
                                 for account_type in account_types:
                                     if 'patterns' in account_type:
+                                        # Combine bank and account_type info
+                                        combined_info = {
+                                            'name': f"{bank['name']} - {account_type['name']}",
+                                            'frequency': account_type.get('frequency', bank.get('frequency', 'monthly')),
+                                            'start_date': account_type.get('start_date', bank.get('start_date')),
+                                            'end_date': account_type.get('end_date', bank.get('end_date')),
+                                            'url': bank.get('url')
+                                        }
                                         for pattern in account_type['patterns']:
-                                            if pattern is not None:
-                                                if isinstance(pattern, dict):
-                                                    full_pattern = self.build_pattern(
-                                                        pattern.get('base', ''),
-                                                        suffix=pattern.get('suffix'),
-                                                        account_type=pattern.get('account_type'),
-                                                        identifiers=pattern.get('identifiers')
-                                                    )
-                                                    pattern_dict = {
-                                                        'pattern': full_pattern,
-                                                        'name': f"{bank['name']} - {account_type['name']}",
-                                                        'frequency': account_type.get('frequency', bank.get('frequency', 'monthly')),
-                                                        'start_date': pattern.get('start_date', account_type.get('start_date', bank.get('start_date'))),
-                                                        'end_date': pattern.get('end_date', account_type.get('end_date', bank.get('end_date'))),
-                                                        'url': bank.get('url')
-                                                    }
-                                                else:
-                                                    pattern_dict = {
-                                                        'pattern': pattern,
-                                                        'name': f"{bank['name']} - {account_type['name']}",
-                                                        'frequency': account_type.get('frequency', bank.get('frequency', 'monthly')),
-                                                        'start_date': account_type.get('start_date', bank.get('start_date')),
-                                                        'end_date': account_type.get('end_date', bank.get('end_date')),
-                                                        'url': bank.get('url')
-                                                    }
-                                                patterns[f'bank_{region}'].append(pattern_dict)
+                                            process_pattern(pattern, combined_info, f'bank_{region}')
                             # Process patterns directly on bank if present
                             elif 'patterns' in bank:
                                 for pattern in bank['patterns']:
-                                    if pattern is not None:
-                                        if isinstance(pattern, dict):
-                                            full_pattern = self.build_pattern(
-                                                pattern.get('base', ''),
-                                                suffix=pattern.get('suffix'),
-                                                account_type=pattern.get('account_type'),
-                                                identifiers=pattern.get('identifiers')
-                                            )
-                                        else:
-                                            full_pattern = pattern
-                                        patterns[f'bank_{region}'].append({
-                                            'pattern': full_pattern,
-                                            'name': bank.get('name', f'bank_{region}'),
-                                            'frequency': bank.get('frequency', 'monthly'),
-                                            'start_date': pattern.get('start_date'),
-                                            'end_date': pattern.get('end_date'),
-                                            'url': bank.get('url')
-                                        })
+                                    process_pattern(pattern, bank, f'bank_{region}')
 
-        self.logger.info("Processing additional patterns...")
         # Process additional patterns
         if 'additional' in self.config:
+            self.logger.info("Processing additional patterns...")
             if isinstance(self.config['additional'], dict) and 'patterns' in self.config['additional']:
                 patterns_dict = self.config['additional']['patterns']
                 for name, pattern_info in patterns_dict.items():
                     if isinstance(pattern_info, dict):
-                        full_pattern = self.build_pattern(
-                            pattern_info.get('base', ''),
-                            suffix=pattern_info.get('suffix'),
-                            account_type=pattern_info.get('account_type'),
-                            identifiers=pattern_info.get('identifiers')
-                        )
-                        patterns['additional'].append({
-                            'pattern': full_pattern,
-                            'name': name,
-                            'frequency': pattern_info.get('frequency', 'yearly'),
-                            'start_date': pattern_info.get('start_date'),
-                            'end_date': pattern_info.get('end_date'),
-                            'url': pattern_info.get('url')
-                        })
+                        pattern_info['name'] = name
+                        process_pattern(pattern_info, pattern_info, 'additional')
             elif isinstance(self.config['additional'], list):
                 for item in self.config['additional']:
                     if isinstance(item, str):
@@ -624,29 +569,12 @@ class TaxDocumentChecker:
                         patterns['additional'].append({
                             'pattern': item,
                             'name': 'additional',
-                            'frequency': 'yearly',  # Default frequency for additional documents
+                            'frequency': 'yearly',
                             'url': None
                         })
                     elif isinstance(item, dict) and 'patterns' in item:
                         for pattern in item['patterns']:
-                            if pattern is not None:
-                                if isinstance(pattern, dict):
-                                    full_pattern = self.build_pattern(
-                                        pattern.get('base', ''),
-                                        suffix=pattern.get('suffix'),
-                                        account_type=pattern.get('account_type'),
-                                        identifiers=pattern.get('identifiers')
-                                    )
-                                else:
-                                    full_pattern = pattern
-                                patterns['additional'].append({
-                                    'pattern': full_pattern,
-                                    'name': item.get('name', 'additional'),
-                                    'frequency': item.get('frequency', 'yearly'),
-                                    'start_date': item.get('start_date'),
-                                    'end_date': item.get('end_date'),
-                                    'url': item.get('url')
-                                })
+                            process_pattern(pattern, item, 'additional')
 
         self.logger.info("Finished flattening config")
         return patterns
