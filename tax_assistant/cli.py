@@ -114,6 +114,9 @@ Examples:
   
   # Check with verbose output
   tax-document-checker --verbose
+  
+  # Generate dummy filenames for missing files
+  tax-document-checker --list-missing
         """
     )
     parser.add_argument('--year', type=str, help='Specific tax year to check (e.g., 2023)')
@@ -125,6 +128,8 @@ Examples:
     parser.add_argument('--no-list', action='store_true', help='Disable file listing (default: list files)')
     parser.add_argument('--format', choices=['text', 'json', 'csv'], default='text', 
                       help='Output format for file listing (default: text)')
+    parser.add_argument('--list-missing', action='store_true', 
+                      help='Generate dummy filenames for missing files')
     
     args = parser.parse_args()
     
@@ -152,7 +157,8 @@ Examples:
     # Check specific year if provided
     if args.year:
         logger.info(f"Checking documents for year {args.year}...")
-        if not checker.check_year(args.year):
+        results = checker.check_year(args.year, list_missing=args.list_missing)
+        if not results['all_found']:
             return 1
         return 0
     
@@ -169,7 +175,8 @@ Examples:
     all_found = True
     for year in years:
         logger.info(f"Processing year {year}...")
-        if not checker.check_year(year):
+        results = checker.check_year(year, list_missing=args.list_missing)
+        if not results['all_found']:
             all_found = False
     
     logger.info("Document check complete!")

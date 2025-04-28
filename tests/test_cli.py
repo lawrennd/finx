@@ -43,7 +43,7 @@ class TestCLI(TestCase):
             with patch('tax_assistant.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
-                mock_instance.check_year.return_value = True
+                mock_instance.check_year.return_value = {'all_found': True}
                 
                 with self.assertLogs(level='INFO') as log_capture:
                     assert main() == 0
@@ -53,7 +53,7 @@ class TestCLI(TestCase):
                     assert any("Initializing TaxDocumentChecker" in msg for msg in log_messages)
                     assert any("Checking documents for year 2023" in msg for msg in log_messages)
                     
-                mock_instance.check_year.assert_called_once_with('2023')
+                mock_instance.check_year.assert_called_once_with('2023', list_missing=False)
 
     def test_cli_with_update_dates(self):
         """Test CLI with update-dates flag."""
@@ -80,7 +80,7 @@ class TestCLI(TestCase):
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
                 mock_instance.list_available_years.return_value = ['2023']
-                mock_instance.check_year.return_value = True
+                mock_instance.check_year.return_value = {'all_found': True}
                 
                 with self.assertLogs(level='INFO') as log_capture:
                     assert main() == 0
@@ -100,7 +100,7 @@ class TestCLI(TestCase):
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
                 mock_instance.list_available_years.return_value = ['2023']
-                mock_instance.check_year.return_value = True
+                mock_instance.check_year.return_value = {'all_found': True}
                 
                 with self.assertLogs(level='DEBUG') as log_capture:
                     assert main() == 0
@@ -120,7 +120,7 @@ class TestCLI(TestCase):
             with patch('tax_assistant.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
-                mock_instance.check_year.return_value = False
+                mock_instance.check_year.return_value = {'all_found': False}
                 
                 with self.assertLogs(level='INFO') as log_capture:
                     assert main() == 1
@@ -164,7 +164,7 @@ class TestCLI(TestCase):
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
                 mock_instance.list_available_years.return_value = ['2023']
-                mock_instance.check_year.return_value = True
+                mock_instance.check_year.return_value = {'all_found': True}
                 
                 with self.assertLogs(level='DEBUG') as log_capture:
                     assert main() == 0
