@@ -13,7 +13,7 @@ from .archive import create_zip_archive
 def setup_logging(log_file=None, verbose=False, console_output=False):
     """Set up logging configuration."""
     if log_file is None:
-        log_file = 'tax_document_checker.log'
+        log_file = 'finx.log'
     
     # Create handlers list starting with file handler
     handlers = [logging.FileHandler(log_file)]
@@ -352,26 +352,31 @@ def setup_tax_parser(subparsers):
 def setup_invest_parser(subparsers):
     """Set up the parser for the 'invest' command."""
     invest_parser = subparsers.add_parser('invest', help='Investment tracking (planned)')
+    invest_parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output for debugging')
     invest_parser.set_defaults(func=invest_command)
 
 def setup_networth_parser(subparsers):
     """Set up the parser for the 'networth' command."""
     networth_parser = subparsers.add_parser('networth', help='Net worth tracking (planned)')
+    networth_parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output for debugging')
     networth_parser.set_defaults(func=networth_command)
 
 def setup_budget_parser(subparsers):
     """Set up the parser for the 'budget' command."""
     budget_parser = subparsers.add_parser('budget', help='Budget management (planned)')
+    budget_parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output for debugging')
     budget_parser.set_defaults(func=budget_command)
 
 def setup_estate_parser(subparsers):
     """Set up the parser for the 'estate' command."""
     estate_parser = subparsers.add_parser('estate', help='Estate planning (planned)')
+    estate_parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output for debugging')
     estate_parser.set_defaults(func=estate_command)
 
 def setup_savings_parser(subparsers):
     """Set up the parser for the 'savings' command."""
     savings_parser = subparsers.add_parser('savings', help='Savings goals tracking (planned)')
+    savings_parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output for debugging')
     savings_parser.set_defaults(func=savings_command)
 
 def parse_args(args):
@@ -436,6 +441,8 @@ def main(args=None):
         try:
             return parsed_args.func(parsed_args)
         except Exception as e:
+            error_message = f"Error: {str(e)}"
+            sys.stderr.write(f"{error_message}\n")
             logger.error(f"Error executing command: {str(e)}")
             if parsed_args.verbose:
                 import traceback

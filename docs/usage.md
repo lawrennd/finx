@@ -88,7 +88,7 @@ finx tax update-dates
 | `--year` | Specific year to check (e.g., 2023) |
 | `--base-path` | Base path for tax documents (default: current directory) |
 | `--verbose`, `-v` | Enable verbose output for debugging |
-| `--log-file` | Path to log file (default: finance_assistant.log) |
+| `--log-file` | Path to log file (default: finx.log) |
 | `--format` | Output format (choices: text, json, csv, default: text) |
 | `--config-file` | Path to base configuration file |
 | `--private-config-file` | Path to private configuration file |
@@ -268,7 +268,7 @@ finx savings update "New Car" --current 5000
 
 The tool uses three YAML configuration files:
 
-### Base Configuration (finance_assistant_base.yml)
+### Base Configuration (tax_document_patterns_base.yml)
 
 Contains public patterns and configurations that can be shared and version controlled:
 
@@ -295,7 +295,7 @@ tax:
           frequency: yearly
 ```
 
-### Private Configuration (finance_assistant_private.yml)
+### Private Configuration (tax_document_patterns_private.yml)
 
 Contains account-specific information and should NOT be committed to version control:
 
@@ -448,7 +448,7 @@ poetry run pytest -v
 
 With coverage report:
 ```bash
-poetry run pytest --cov=finance_assistant
+poetry run pytest --cov=tax_assistant
 ```
 
 ## Troubleshooting
