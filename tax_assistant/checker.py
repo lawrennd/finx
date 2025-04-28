@@ -460,7 +460,8 @@ class TaxDocumentChecker:
                             'name': employer['name'],
                             'frequency': employer.get('frequency', 'monthly'),
                             'start_date': employer.get('start_date'),
-                            'end_date': employer.get('end_date')
+                            'end_date': employer.get('end_date'),
+                            'url': employer.get('url')
                         })
             else:
                 # Dictionary format with categories
@@ -484,7 +485,8 @@ class TaxDocumentChecker:
                                         'name': employer['name'],
                                         'frequency': employer['frequency'],
                                         'start_date': employer.get('start_date'),
-                                        'end_date': employer.get('end_date')
+                                        'end_date': employer.get('end_date'),
+                                        'url': employer.get('url')
                                     })
 
         self.logger.info("Processing investment patterns...")
@@ -499,7 +501,8 @@ class TaxDocumentChecker:
                             patterns[f'investment_{region}'].append({
                                 'pattern': account,
                                 'name': f'investment_{region}',
-                                'frequency': 'yearly'  # Default frequency for investments
+                                'frequency': 'yearly',  # Default frequency for investments
+                                'url': None
                             })
                         elif isinstance(account, dict) and 'patterns' in account and account['patterns']:
                             for pattern in account['patterns']:
@@ -518,7 +521,8 @@ class TaxDocumentChecker:
                                         'name': account.get('name', f'investment_{region}'),
                                         'frequency': account.get('frequency', 'yearly'),
                                         'start_date': account.get('start_date'),
-                                        'end_date': account.get('end_date')
+                                        'end_date': account.get('end_date'),
+                                        'url': account.get('url')
                                     })
 
         self.logger.info("Processing bank patterns...")
@@ -533,7 +537,8 @@ class TaxDocumentChecker:
                             patterns[f'bank_{region}'].append({
                                 'pattern': bank,
                                 'name': f'bank_{region}',
-                                'frequency': 'monthly'  # Default frequency for bank statements
+                                'frequency': 'monthly',  # Default frequency for bank statements
+                                'url': None
                             })
                         elif isinstance(bank, dict):
                             self.logger.info(f"Processing bank: {bank.get('name', 'unknown')}")
@@ -556,7 +561,8 @@ class TaxDocumentChecker:
                                                         'name': f"{bank['name']} - {account_type['name']}",
                                                         'frequency': account_type.get('frequency', bank.get('frequency', 'monthly')),
                                                         'start_date': pattern.get('start_date', account_type.get('start_date', bank.get('start_date'))),
-                                                        'end_date': pattern.get('end_date', account_type.get('end_date', bank.get('end_date')))
+                                                        'end_date': pattern.get('end_date', account_type.get('end_date', bank.get('end_date'))),
+                                                        'url': bank.get('url')
                                                     }
                                                 else:
                                                     pattern_dict = {
@@ -564,7 +570,8 @@ class TaxDocumentChecker:
                                                         'name': f"{bank['name']} - {account_type['name']}",
                                                         'frequency': account_type.get('frequency', bank.get('frequency', 'monthly')),
                                                         'start_date': account_type.get('start_date', bank.get('start_date')),
-                                                        'end_date': account_type.get('end_date', bank.get('end_date'))
+                                                        'end_date': account_type.get('end_date', bank.get('end_date')),
+                                                        'url': bank.get('url')
                                                     }
                                                 patterns[f'bank_{region}'].append(pattern_dict)
                             # Process patterns directly on bank if present
@@ -585,7 +592,8 @@ class TaxDocumentChecker:
                                             'name': bank.get('name', f'bank_{region}'),
                                             'frequency': bank.get('frequency', 'monthly'),
                                             'start_date': pattern.get('start_date'),
-                                            'end_date': pattern.get('end_date')
+                                            'end_date': pattern.get('end_date'),
+                                            'url': bank.get('url')
                                         })
 
         self.logger.info("Processing additional patterns...")
@@ -606,7 +614,8 @@ class TaxDocumentChecker:
                             'name': name,
                             'frequency': pattern_info.get('frequency', 'yearly'),
                             'start_date': pattern_info.get('start_date'),
-                            'end_date': pattern_info.get('end_date')
+                            'end_date': pattern_info.get('end_date'),
+                            'url': pattern_info.get('url')
                         })
             elif isinstance(self.config['additional'], list):
                 for item in self.config['additional']:
@@ -615,7 +624,8 @@ class TaxDocumentChecker:
                         patterns['additional'].append({
                             'pattern': item,
                             'name': 'additional',
-                            'frequency': 'yearly'  # Default frequency for additional documents
+                            'frequency': 'yearly',  # Default frequency for additional documents
+                            'url': None
                         })
                     elif isinstance(item, dict) and 'patterns' in item:
                         for pattern in item['patterns']:
@@ -634,7 +644,8 @@ class TaxDocumentChecker:
                                     'name': item.get('name', 'additional'),
                                     'frequency': item.get('frequency', 'yearly'),
                                     'start_date': item.get('start_date'),
-                                    'end_date': item.get('end_date')
+                                    'end_date': item.get('end_date'),
+                                    'url': item.get('url')
                                 })
 
         self.logger.info("Finished flattening config")
@@ -766,7 +777,11 @@ class TaxDocumentChecker:
             dict: A dictionary containing:
                 - Category-to-files mappings
                 - 'all_found': A boolean indicating whether all required documents were found
-                - 'missing_files': List of missing files with dummy filenames if list_missing=True
+                - 'missing_files': List of dictionaries containing missing file info:
+                    - 'path': Path to the missing file
+                    - 'name': Name of the document
+                    - 'url': URL where the document can be found (if available)
+                    - 'frequency': Document frequency
                 - 'found_files': List of found files
                 - 'errors': List of any errors encountered
         """
@@ -801,6 +816,7 @@ class TaxDocumentChecker:
                     pattern = pattern_info['pattern']
                     name = pattern_info['name']
                     frequency = pattern_info.get('frequency', 'yearly')
+                    url = pattern_info.get('url')  # Get URL if available
                     
                     # Check date range
                     calendar_year_start = datetime(int(year), 1, 1)
@@ -828,6 +844,8 @@ class TaxDocumentChecker:
                     else:
                         self.logger.warning(f"✗ No files found for {name} ({frequency})")
                         self.logger.warning(f"  Pattern used: {pattern}")
+                        if url:
+                            self.logger.info(f"  Document can be found at: {url}")
                         
                         # Generate dummy filename if requested
                         if list_missing and year_path:
@@ -839,21 +857,39 @@ class TaxDocumentChecker:
                                 # For yearly files, just use the year without month and day
                                 dummy_filename = f"{year}_{name.lower().replace(' ', '_')}.pdf"
                                 dummy_path = year_path / dummy_filename
-                                results['missing_files'].append(str(dummy_path))
+                                missing_info = {
+                                    'path': str(dummy_path),
+                                    'name': name,
+                                    'frequency': frequency,
+                                    'url': url
+                                }
+                                results['missing_files'].append(missing_info)
                                 self.logger.info(f"  Generated dummy filename: {dummy_filename}")
                             elif frequency == 'monthly':
                                 # For monthly files, include month but omit day
                                 for month in range(1, 13):
                                     dummy_filename = f"{year}-{month:02d}_{name.lower().replace(' ', '_')}.pdf"
                                     dummy_path = year_path / dummy_filename
-                                    results['missing_files'].append(str(dummy_path))
+                                    missing_info = {
+                                        'path': str(dummy_path),
+                                        'name': name,
+                                        'frequency': frequency,
+                                        'url': url
+                                    }
+                                    results['missing_files'].append(missing_info)
                                     self.logger.info(f"  Generated dummy filename: {dummy_filename}")
                             elif frequency == 'quarterly':
                                 # For quarterly files, use Q1, Q2, Q3, Q4
                                 for quarter in range(1, 5):
                                     dummy_filename = f"{year}-Q{quarter}_{name.lower().replace(' ', '_')}.pdf"
                                     dummy_path = year_path / dummy_filename
-                                    results['missing_files'].append(str(dummy_path))
+                                    missing_info = {
+                                        'path': str(dummy_path),
+                                        'name': name,
+                                        'frequency': frequency,
+                                        'url': url
+                                    }
+                                    results['missing_files'].append(missing_info)
                                     self.logger.info(f"  Generated dummy filename: {dummy_filename}")
                         
                         results['all_found'] = False
@@ -867,7 +903,9 @@ class TaxDocumentChecker:
                             self.logger.info(f"✓ Found {found_count} files for {name} ({frequency})")
                         else:
                             self.logger.warning(f"✗ Found {found_count} files for {name} ({frequency}), expected {expected_count}")
-                            
+                            if url:
+                                self.logger.info(f"  Document can be found at: {url}")
+                        
                             # Generate dummy filenames for missing documents if requested
                             if list_missing and year_path:
                                 missing_count = expected_count - found_count
@@ -884,7 +922,13 @@ class TaxDocumentChecker:
                                         if month not in found_months:
                                             dummy_filename = f"{year}-{month:02d}_{name.lower().replace(' ', '_')}.pdf"
                                             dummy_path = year_path / dummy_filename
-                                            results['missing_files'].append(str(dummy_path))
+                                            missing_info = {
+                                                'path': str(dummy_path),
+                                                'name': name,
+                                                'frequency': frequency,
+                                                'url': url
+                                            }
+                                            results['missing_files'].append(missing_info)
                                             self.logger.info(f"  Generated dummy filename: {dummy_filename}")
                                 
                                 elif frequency == 'quarterly':
@@ -902,7 +946,13 @@ class TaxDocumentChecker:
                                         if quarter not in found_quarters:
                                             dummy_filename = f"{year}-Q{quarter}_{name.lower().replace(' ', '_')}.pdf"
                                             dummy_path = year_path / dummy_filename
-                                            results['missing_files'].append(str(dummy_path))
+                                            missing_info = {
+                                                'path': str(dummy_path),
+                                                'name': name,
+                                                'frequency': frequency,
+                                                'url': url
+                                            }
+                                            results['missing_files'].append(missing_info)
                                             self.logger.info(f"  Generated dummy filename: {dummy_filename}")
                             
                             results['all_found'] = False
@@ -912,8 +962,10 @@ class TaxDocumentChecker:
             self.logger.warning("\nMISSING OR INCOMPLETE DOCUMENTS SUMMARY:")
             self.logger.warning("=" * 50)
             self.logger.warning("")
-            for missing_file in sorted(results['missing_files']):
-                self.logger.warning(f"- {missing_file}")
+            for missing_file in sorted(results['missing_files'], key=lambda x: x['path']):
+                self.logger.warning(f"- {missing_file['path']}")
+                if 'url' in missing_file and missing_file['url']:
+                    self.logger.warning(f"  Can be found at: {missing_file['url']}")
             self.logger.warning("")
         
         return results

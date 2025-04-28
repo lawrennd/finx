@@ -113,7 +113,10 @@ def list_missing_files(checker, year=None, output_format='text'):
         for missing_file in results['missing_files']:
             file_info = {
                 'year': year,
-                'path': missing_file,
+                'path': missing_file['path'],
+                'name': missing_file['name'],
+                'frequency': missing_file['frequency'],
+                'url': missing_file.get('url'),
                 'status': 'missing'
             }
             files.append(file_info)
@@ -190,6 +193,9 @@ Examples:
     parser.add_argument('--year', type=str, help='Specific tax year to check (e.g., 2023)')
     parser.add_argument('--update-dates', action='store_true', help='Update YAML with inferred dates from filenames')
     parser.add_argument('--base-path', type=str, default='.', help='Base path for tax documents (default: current directory)')
+    parser.add_argument('--config-file', type=str, help='Path to base configuration file')
+    parser.add_argument('--private-config-file', type=str, help='Path to private configuration file')
+    parser.add_argument('--directory-mapping-file', type=str, help='Path to directory mapping file')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output for debugging')
     parser.add_argument('--log-file', type=str, help='Path to log file (default: tax_document_checker.log)')
     parser.add_argument('--console-output', action='store_true', help='Enable logging output to console')

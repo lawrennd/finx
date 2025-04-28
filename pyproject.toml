@@ -36,6 +36,7 @@ flake8 = "^6.0"
 
 [tool.poetry.scripts]
 tax-assistant = "tax_assistant.cli:main"
+zip-tax-documents = "tax_assistant.scripts.zip_tax_documents:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

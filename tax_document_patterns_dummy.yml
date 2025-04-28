@@ -4,35 +4,39 @@
 additional:
 - frequency: yearly
   name: EXAMPLE_TAX_RETURN
+  url: "https://example.com/tax-return"
   patterns:
   - base: example-tax-return
   start_date: '2023-01-01'
   end_date: '2025-01-01'
 - frequency: yearly
   name: EXAMPLE_E_FILE
+  url: "https://example.com/e-file"
   patterns:
   - base: EXAMPLE-E-FILE
 - frequency: yearly
   name: EXAMPLE_FEDERAL_TAX
+  url: "https://example.com/federal-tax"
   patterns:
-  - base: EXAMPLE
-    suffix: Federal
+  - base: EXAMPLE_Federal
 - frequency: yearly
   name: EXAMPLE_FINCEN
+  url: "https://example.com/fincen"
   patterns:
-  - base: EXAMPLE
-    suffix: FinCEN
+  - base: EXAMPLE_FinCEN
 
 employment:
   current:
     - frequency: monthly
       name: "EXAMPLE_CURRENT_EMPLOYER"
+      url: "https://example.com/employer1/payslips"
       annual_document_type: "P60"
       patterns:
         - base: example-current-employer
       start_date: '2023-01-01'
     - frequency: monthly
       name: "ANOTHER_CURRENT_EMPLOYER"
+      url: "https://example.com/employer2/payslips"
       annual_document_type: "P60"
       patterns:
         - base: another-current-employer
@@ -41,9 +45,10 @@ employment:
   generic:
     - frequency: yearly
       name: "EXAMPLE_P45_P60"
+      url: "https://example.com/employer1/p45p60"
       patterns:
-        - base: .*_example_p45
-        - base: .*_example_p60
+        - base: example_p45
+        - base: example_p60
       start_date: '2023-01-01'
       end_date: '2024-12-31'
   previous:
@@ -62,12 +67,14 @@ investment:
   uk:
     - frequency: yearly
       name: "EXAMPLE_UK_INVESTMENT"
+      url: "https://example.com/uk-investment"
       annual_document_type: "Annual Statement"
       patterns:
         - base: example-uk-investment
       start_date: '2023-01-01'
     - frequency: monthly
       name: "ANOTHER_UK_INVESTMENT"
+      url: "https://example.com/another-uk-investment"
       annual_document_type: "Annual Statement"
       patterns:
         - base: another-uk-investment
@@ -76,6 +83,7 @@ investment:
   us:
     - frequency: yearly
       name: "EXAMPLE_US_INVESTMENT"
+      url: "https://example.com/us-investment"
       annual_document_type: "1099"
       patterns:
         - base: example-us-investment
@@ -83,6 +91,7 @@ investment:
       start_date: '2023-01-01'
     - frequency: yearly
       name: "ANOTHER_US_INVESTMENT"
+      url: "https://example.com/another-us-investment"
       annual_document_type: "1099"
       patterns:
         - base: another-us-investment
@@ -91,7 +100,8 @@ investment:
 
 bank:
   uk:
-    - name: "EXAMPLE_UK_BANK"
+    - name: "EXAMPLE_UK_BANK - Joint Account"
+      url: "https://example.com/uk-bank/joint"
       frequency: monthly
       annual_document_type: "Annual Statement"
       account_types:
@@ -107,7 +117,19 @@ bank:
               identifiers: ["savings"]
           start_date: '2023-01-01'
           end_date: '2024-12-31'
+    - name: "EXAMPLE_UK_BANK - Savings"
+      url: "https://example.com/uk-bank/savings"
+      frequency: monthly
+      annual_document_type: "Annual Statement"
+      account_types:
+        - name: "Savings"
+          patterns:
+            - base: example-uk-bank
+              identifiers: ["savings"]
+          start_date: '2023-01-01'
+          end_date: '2024-12-31'
     - name: "ANOTHER_UK_BANK"
+      url: "https://example.com/another-uk-bank"
       frequency: yearly
       annual_document_type: "Annual Statement"
       patterns:
@@ -115,22 +137,24 @@ bank:
       start_date: '2023-01-01'
       end_date: '2024-12-31'
   us:
-    - name: "EXAMPLE_US_BANK"
+    - name: "EXAMPLE_US_BANK - savings"
+      url: "https://example.com/us-bank/savings"
+      frequency: quarterly
       annual_document_type: "1099"
       account_types:
         - name: "savings"
-          frequency: quarterly
           patterns:
             - base: example-us-bank
               identifiers:
                 - savings
           start_date: '2023-01-01'
           end_date: '2023-12-31'
-    - name: "ANOTHER_US_BANK"
+    - name: "ANOTHER_US_BANK - savings"
+      url: "https://example.com/another-us-bank/savings"
+      frequency: monthly
       annual_document_type: "1099"
       account_types:
         - name: "savings"
-          frequency: monthly
           patterns:
             - base: another-us-bank
               identifiers:

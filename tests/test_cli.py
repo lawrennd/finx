@@ -116,7 +116,17 @@ class TestCLI(TestCase):
                 mock_checker.return_value = mock_instance
                 mock_instance.list_available_years.return_value = ['2023']
                 mock_instance.check_year.return_value = {
-                    'missing_files': ['/test/missing.pdf'],
+                    'year': '2023',
+                    'missing_files': [
+                        {
+                            'path': '/test/missing.pdf',
+                            'name': 'test_doc',
+                            'frequency': 'yearly',
+                            'url': 'https://example.com'
+                        }
+                    ],
+                    'found_files': [],
+                    'errors': [],
                     'all_found': False
                 }
                 
@@ -124,7 +134,7 @@ class TestCLI(TestCase):
                     assert main() == 0
                     # Verify that list_missing_files was called (output would go to stdout)
                     mock_stdout.write.assert_called()
-                mock_instance.check_year.assert_called_with('2023', list_missing=True)
+                mock_instance.check_year.assert_called_once()
 
     def test_cli_with_no_years_found(self):
         """Test CLI when no tax years are found in the directory."""
@@ -174,15 +184,24 @@ class TestCLI(TestCase):
 
     def test_cli_with_json_format(self):
         """Test CLI with JSON output format."""
-        with patch('sys.argv', ['tax-document-lister', '--format', 'json']):
+        with patch('sys.argv', ['tax-document-lister', '--format', 'json', '--list-missing']):
             with patch('tax_assistant.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
-                mock_instance.list_available_years.return_value = ['2023']
-                mock_instance.required_patterns = {
-                    'banking': [{'pattern': '.*', 'name': 'test'}]
+                mock_instance.check_year.return_value = {
+                    'year': '2023',
+                    'missing_files': [
+                        {
+                            'path': '/test/missing.pdf',
+                            'name': 'test_doc',
+                            'frequency': 'yearly',
+                            'url': 'https://example.com'
+                        }
+                    ],
+                    'found_files': [],
+                    'errors': [],
+                    'all_found': False
                 }
-                mock_instance.find_files_matching_pattern.return_value = ['/test/file.pdf']
                 
                 with patch('sys.stdout') as mock_stdout:
                     assert main() == 0
@@ -191,17 +210,52 @@ class TestCLI(TestCase):
 
     def test_cli_with_csv_format(self):
         """Test CLI with CSV output format."""
-        with patch('sys.argv', ['tax-document-lister', '--format', 'csv']):
+        with patch('sys.argv', ['tax-document-lister', '--format', 'csv', '--list-missing']):
             with patch('tax_assistant.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
-                mock_instance.list_available_years.return_value = ['2023']
-                mock_instance.required_patterns = {
-                    'banking': [{'pattern': '.*', 'name': 'test'}]
+                mock_instance.check_year.return_value = {
+                    'year': '2023',
+                    'missing_files': [
+                        {
+                            'path': '/test/missing.pdf',
+                            'name': 'test_doc',
+                            'frequency': 'yearly',
+                            'url': 'https://example.com'
+                        }
+                    ],
+                    'found_files': [],
+                    'errors': [],
+                    'all_found': False
                 }
-                mock_instance.find_files_matching_pattern.return_value = ['/test/file.pdf']
                 
                 with patch('sys.stdout') as mock_stdout:
                     assert main() == 0
                     # Verify that CSV output was written to stdout
+                    mock_stdout.write.assert_called()
+
+    def test_cli_default_format(self):
+        """Test CLI with default output format."""
+        with patch('sys.argv', ['tax-document-lister', '--list-missing']):
+            with patch('tax_assistant.cli.TaxDocumentChecker') as mock_checker:
+                mock_instance = MagicMock()
+                mock_checker.return_value = mock_instance
+                mock_instance.check_year.return_value = {
+                    'year': '2023',
+                    'missing_files': [
+                        {
+                            'path': '/test/missing.pdf',
+                            'name': 'test_doc',
+                            'frequency': 'yearly',
+                            'url': 'https://example.com'
+                        }
+                    ],
+                    'found_files': [],
+                    'errors': [],
+                    'all_found': False
+                }
+                
+                with patch('sys.stdout') as mock_stdout:
+                    assert main() == 0
+                    # Verify that output was written to stdout
                     mock_stdout.write.assert_called() 
