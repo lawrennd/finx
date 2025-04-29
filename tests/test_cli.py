@@ -144,7 +144,7 @@ class TestCLI(TestCase):
 
     def test_cli_tax_missing_with_json_format(self):
         """Test CLI with JSON output format."""
-        with patch('sys.argv', ['finx', 'tax', 'missing', '--format', 'json', '--list-missing']):
+        with patch('sys.argv', ['finx', 'tax', 'missing', '--format', 'json']):
             with patch('finx.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance
@@ -178,7 +178,7 @@ class TestCLI(TestCase):
 
     def test_cli_tax_missing_with_csv_format(self):
         """Test CLI with CSV output format."""
-        with patch('sys.argv', ['finx', 'tax', 'missing', '--format', 'csv', '--list-missing']):
+        with patch('sys.argv', ['finx', 'tax', 'missing', '--format', 'csv']):
             with patch('finx.cli.TaxDocumentChecker') as mock_checker:
                 mock_instance = MagicMock()
                 mock_checker.return_value = mock_instance

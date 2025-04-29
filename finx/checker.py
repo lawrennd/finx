@@ -776,7 +776,10 @@ class TaxDocumentChecker:
                             self.logger.info(f"  Document can be found at: {url}")
                         
                         # Generate dummy filename if requested
-                        if list_missing and year_path:
+                        if list_missing:
+                            # Get the appropriate directories for this category
+                            target_dirs = self.directory_mapping.get(category, [''])
+                            
                             # Extract the pattern format without the year
                             pattern_without_year = pattern.replace(str(year), 'YYYY')
                             
@@ -784,40 +787,70 @@ class TaxDocumentChecker:
                             if frequency in ['yearly', 'annual', 'once']:
                                 # For yearly files, just use the year without month and day
                                 dummy_filename = f"{year}_{name.lower().replace(' ', '_')}.pdf"
-                                dummy_path = year_path / dummy_filename
-                                missing_info = {
-                                    'path': str(dummy_path),
-                                    'name': name,
-                                    'frequency': frequency,
-                                    'url': url
-                                }
-                                results['missing_files'].append(missing_info)
+                                
+                                # Create an entry for each target directory
+                                for target_dir in target_dirs:
+                                    # Create the full path using the target directory
+                                    if target_dir:
+                                        full_path = self.base_path / target_dir / dummy_filename
+                                    else:
+                                        full_path = year_path / dummy_filename  # Fallback to year path if no directory mapping
+                                        
+                                    missing_info = {
+                                        'path': str(full_path),
+                                        'name': name,
+                                        'frequency': frequency,
+                                        'category': category,
+                                        'url': url
+                                    }
+                                    results['missing_files'].append(missing_info)
+                                    
                                 self.logger.info(f"  Generated dummy filename: {dummy_filename}")
                             elif frequency == 'monthly':
                                 # For monthly files, include month but omit day
                                 for month in range(1, 13):
                                     dummy_filename = f"{year}-{month:02d}_{name.lower().replace(' ', '_')}.pdf"
-                                    dummy_path = year_path / dummy_filename
-                                    missing_info = {
-                                        'path': str(dummy_path),
-                                        'name': name,
-                                        'frequency': frequency,
-                                        'url': url
-                                    }
-                                    results['missing_files'].append(missing_info)
+                                    
+                                    # Create an entry for each target directory
+                                    for target_dir in target_dirs:
+                                        # Create the full path using the target directory
+                                        if target_dir:
+                                            full_path = self.base_path / target_dir / dummy_filename
+                                        else:
+                                            full_path = year_path / dummy_filename  # Fallback to year path if no directory mapping
+                                            
+                                        missing_info = {
+                                            'path': str(full_path),
+                                            'name': name,
+                                            'frequency': frequency,
+                                            'category': category,
+                                            'url': url
+                                        }
+                                        results['missing_files'].append(missing_info)
+                                    
                                     self.logger.info(f"  Generated dummy filename: {dummy_filename}")
                             elif frequency == 'quarterly':
                                 # For quarterly files, use Q1, Q2, Q3, Q4
                                 for quarter in range(1, 5):
                                     dummy_filename = f"{year}-Q{quarter}_{name.lower().replace(' ', '_')}.pdf"
-                                    dummy_path = year_path / dummy_filename
-                                    missing_info = {
-                                        'path': str(dummy_path),
-                                        'name': name,
-                                        'frequency': frequency,
-                                        'url': url
-                                    }
-                                    results['missing_files'].append(missing_info)
+                                    
+                                    # Create an entry for each target directory
+                                    for target_dir in target_dirs:
+                                        # Create the full path using the target directory
+                                        if target_dir:
+                                            full_path = self.base_path / target_dir / dummy_filename
+                                        else:
+                                            full_path = year_path / dummy_filename  # Fallback to year path if no directory mapping
+                                            
+                                        missing_info = {
+                                            'path': str(full_path),
+                                            'name': name,
+                                            'frequency': frequency,
+                                            'category': category,
+                                            'url': url
+                                        }
+                                        results['missing_files'].append(missing_info)
+                                    
                                     self.logger.info(f"  Generated dummy filename: {dummy_filename}")
                         
                         results['all_found'] = False
@@ -835,7 +868,10 @@ class TaxDocumentChecker:
                                 self.logger.info(f"  Document can be found at: {url}")
                         
                             # Generate dummy filenames for missing documents if requested
-                            if list_missing and year_path:
+                            if list_missing:
+                                # Get the appropriate directories for this category
+                                target_dirs = self.directory_mapping.get(category, [''])
+                                
                                 missing_count = expected_count - found_count
                                 if frequency == 'monthly':
                                     # Find which months are missing
@@ -849,14 +885,24 @@ class TaxDocumentChecker:
                                     for month in range(1, 13):
                                         if month not in found_months:
                                             dummy_filename = f"{year}-{month:02d}_{name.lower().replace(' ', '_')}.pdf"
-                                            dummy_path = year_path / dummy_filename
-                                            missing_info = {
-                                                'path': str(dummy_path),
-                                                'name': name,
-                                                'frequency': frequency,
-                                                'url': url
-                                            }
-                                            results['missing_files'].append(missing_info)
+                                            
+                                            # Create an entry for each target directory
+                                            for target_dir in target_dirs:
+                                                # Create the full path using the target directory
+                                                if target_dir:
+                                                    full_path = self.base_path / target_dir / dummy_filename
+                                                else:
+                                                    full_path = year_path / dummy_filename  # Fallback to year path if no directory mapping
+                                                    
+                                                missing_info = {
+                                                    'path': str(full_path),
+                                                    'name': name,
+                                                    'frequency': frequency,
+                                                    'category': category,
+                                                    'url': url
+                                                }
+                                                results['missing_files'].append(missing_info)
+                                            
                                             self.logger.info(f"  Generated dummy filename: {dummy_filename}")
                                 
                                 elif frequency == 'quarterly':
@@ -873,14 +919,24 @@ class TaxDocumentChecker:
                                     for quarter in range(1, 5):
                                         if quarter not in found_quarters:
                                             dummy_filename = f"{year}-Q{quarter}_{name.lower().replace(' ', '_')}.pdf"
-                                            dummy_path = year_path / dummy_filename
-                                            missing_info = {
-                                                'path': str(dummy_path),
-                                                'name': name,
-                                                'frequency': frequency,
-                                                'url': url
-                                            }
-                                            results['missing_files'].append(missing_info)
+                                            
+                                            # Create an entry for each target directory
+                                            for target_dir in target_dirs:
+                                                # Create the full path using the target directory
+                                                if target_dir:
+                                                    full_path = self.base_path / target_dir / dummy_filename
+                                                else:
+                                                    full_path = year_path / dummy_filename  # Fallback to year path if no directory mapping
+                                                    
+                                                missing_info = {
+                                                    'path': str(full_path),
+                                                    'name': name,
+                                                    'frequency': frequency,
+                                                    'category': category,
+                                                    'url': url
+                                                }
+                                                results['missing_files'].append(missing_info)
+                                            
                                             self.logger.info(f"  Generated dummy filename: {dummy_filename}")
                             
                             results['all_found'] = False
@@ -890,10 +946,35 @@ class TaxDocumentChecker:
             self.logger.warning("\nMISSING OR INCOMPLETE DOCUMENTS SUMMARY:")
             self.logger.warning("=" * 50)
             self.logger.warning("")
+            
+            # Group missing files by category for better organization
+            files_by_category = {}
             for missing_file in sorted(results['missing_files'], key=lambda x: x['path']):
-                self.logger.warning(f"- {missing_file['path']}")
-                if 'url' in missing_file and missing_file['url']:
-                    self.logger.warning(f"  Can be found at: {missing_file['url']}")
+                category = missing_file.get('category', 'unknown')
+                if category not in files_by_category:
+                    files_by_category[category] = []
+                files_by_category[category].append(missing_file)
+            
+            # Print missing files grouped by category
+            for category, files in files_by_category.items():
+                target_dirs = self.directory_mapping.get(category, [''])
+                if target_dirs and target_dirs[0]:
+                    self.logger.warning(f"\nCategory: {category.upper()} - Place in: {', '.join(target_dirs)}")
+                else:
+                    self.logger.warning(f"\nCategory: {category.upper()}")
+                
+                for missing_file in files:
+                    path = missing_file['path']
+                    # Remove base_path from the path to show a relative path
+                    if self.base_path and str(path).startswith(str(self.base_path)):
+                        relative_path = Path(path).relative_to(self.base_path)
+                        self.logger.warning(f"- {relative_path}")
+                    else:
+                        self.logger.warning(f"- {path}")
+                        
+                    if 'url' in missing_file and missing_file['url']:
+                        self.logger.warning(f"  Can be found at: {missing_file['url']}")
+            
             self.logger.warning("")
         
         return results
