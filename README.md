@@ -5,11 +5,11 @@
 [![Python Versions](https://img.shields.io/pypi/pyversions/tax-document-checker.svg)](https://pypi.org/project/tax-document-checker/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A comprehensive command-line toolkit for managing personal finances, including tax document organization, investment tracking, net worth calculation, and more.
+A command-line toolkit for managing personal finances, including tax document organization.
 
 ## Overview
 
-Finance Assistant provides a suite of tools to help you manage different aspects of your financial life through a consistent, Git-inspired command-line interface. Each functionality is accessible through subcommands, making it easy to extend and maintain.
+`finx` provides a suite of tools to help you manage different aspects of your financial documents through a git-inspired command-line interface. Each functionality is accessible through subcommands, making it easy to extend and maintain.
 
 ## Current Features
 
@@ -32,14 +32,14 @@ Finance Assistant provides a suite of tools to help you manage different aspects
 
 ### Option 1: Install directly with pip
 ```bash
-pip install git+https://github.com/lawrennd/tax_document_checker.git
+pip install git+https://github.com/lawrennd/finx.git
 ```
 
 ### Option 2: Install from source using Poetry (for development)
 1. Clone this repository:
    ```bash
-   git clone https://github.com/lawrennd/tax_document_checker.git
-   cd tax_document_checker
+   git clone https://github.com/lawrennd/finx.git
+   cd finx
    ```
 
 2. Install using Poetry:

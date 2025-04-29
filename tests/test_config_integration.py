@@ -4,7 +4,7 @@ import yaml
 import tempfile
 import shutil
 from pathlib import Path
-from tax_assistant.checker import TaxDocumentChecker
+from finx.checker import TaxDocumentChecker
 
 class TestConfigIntegration:
     """Integration tests that verify configuration files match documentation."""
@@ -346,7 +346,7 @@ class TestConfigIntegration:
     def test_cli_commands_with_config_files(self):
         """Test that the CLI commands described in README work with our config files."""
         # Instead of using subprocess, we'll call the functions directly
-        from tax_assistant.cli import tax_status_command, tax_missing_command
+        from finx.cli import tax_status_command, tax_missing_command
         import argparse
         
         # Create test files
