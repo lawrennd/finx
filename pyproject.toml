@@ -5,8 +5,8 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "finx"
 version = "0.1.0"
-description = "A tool for listing and checking tax documents"
-authors = ["Your Name <your.email@example.com>"]
+description = "A tool for listing and checking finances"
+authors = ["Neil Lawrence <your.email@example.com>"]
 readme = "README.md"
 license = "MIT"
 packages = [{include = "finx"}]
