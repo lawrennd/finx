@@ -139,6 +139,10 @@ Finance Assistant is designed with privacy and security in mind:
 - No financial data is sent to external services
 - All processing happens locally on your machine
 - Sensitive files are excluded from version control by default
+- Test data is included in the repository but contains no real personal or financial information
+  - Test documents are empty PDFs or contain only example data
+  - Real documents should be stored outside the repository
+  - The `.gitignore` file is configured to exclude real documents while keeping test data
 
 ## Contributing
 
