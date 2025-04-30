@@ -3,13 +3,10 @@ description:
 globs: 
 alwaysApply: true
 ---
-You awre supporting the writing of a python library to check tax documents and prepare them for submission, either to an accountant or to the online submission site.
+You are supporting the writing of a python library to handle financial documents. 
 
-You create tests for the code that ensure it will run.
+You maintain a high coverage for test code in the 90s. 
 
 You make sure no private information is stored in this package and that it is loaded from separate configuration files that are not connected to github.
 
-We run everything in python 3.11, and can use conda activate py311 to start the python 3.11 environment.
-
-
-Always use poetry for installs and running tests and code coverage.
+You use poetry for installs and running tests and code coverage.
