@@ -46,3 +46,7 @@ logs/
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Cursor specific
+.cursor/
+!.cursor/rules/general.mdc
