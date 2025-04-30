@@ -9,6 +9,10 @@ from pathlib import Path
 from datetime import datetime
 from .checker import TaxDocumentChecker
 from .archive import create_zip_archive
+import click
+import os
+import yaml
+from .entities import EntityManager
 
 def setup_logging(log_file=None, verbose=False, console_output=False):
     """Set up logging configuration."""
@@ -450,6 +454,55 @@ def main(args=None):
             return 1
     
     return 0
+
+@click.group()
+def entities():
+    """Manage financial entities and their contact details."""
+    pass
+
+@entities.command()
+@click.option('--type', '-t', help='Filter entities by type')
+def list(type):
+    """List all entities, optionally filtered by type."""
+    manager = EntityManager(os.getcwd())
+    entities = manager.list_entities(type)
+    
+    if not entities:
+        click.echo("No entities found.")
+        return
+    
+    for entity in entities:
+        click.echo("\n" + manager.format_entity(entity))
+        click.echo("-" * 50)
+
+@entities.command()
+def check():
+    """Check for entities mentioned in config files but not in entities list."""
+    manager = EntityManager(os.getcwd())
+    
+    # Load base and dummy configs
+    base_config = {}
+    dummy_config = {}
+    
+    base_path = Path(os.getcwd()) / "finx_base.yml"
+    dummy_path = Path(os.getcwd()) / "finx_dummy.yml"
+    
+    if base_path.exists():
+        with open(base_path, 'r') as f:
+            base_config = yaml.safe_load(f)
+    
+    if dummy_path.exists():
+        with open(dummy_path, 'r') as f:
+            dummy_config = yaml.safe_load(f)
+    
+    missing = manager.check_missing_entities(base_config, dummy_config)
+    
+    if missing:
+        click.echo("The following entities are mentioned in config files but not in the entities list:")
+        for name in missing:
+            click.echo(f"  - {name}")
+    else:
+        click.echo("All entities mentioned in config files are listed in the entities database.")
 
 if __name__ == "__main__":
     sys.exit(main()) 

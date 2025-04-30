@@ -13,6 +13,7 @@ finx <command> <subcommand> [options]
 Available commands:
 
 - `tax`: Tax document management
+- `entities`: Entity management
 - `invest`: Investment tracking (planned)
 - `networth`: Net worth calculation (planned)
 - `budget`: Budget management (planned)
@@ -93,6 +94,54 @@ finx tax update-dates
 | `--config-file` | Path to base configuration file |
 | `--private-config-file` | Path to private configuration file |
 | `--directory-mapping-file` | Path to directory mapping file |
+
+## Entity Management
+
+The `entities` command helps you track contact details for financial entities.
+
+### Subcommands
+
+#### list
+
+List stored entities and their contact details.
+
+```bash
+# List all entities
+finx entities list
+
+# List entities of a specific type
+finx entities list --type accountant
+```
+
+#### check
+
+Check for missing entity information in configuration files.
+
+```bash
+# Check for missing entities
+finx entities check
+```
+
+### Entity Types
+
+The tool supports the following entity types:
+- **accountant**: Tax and accounting services
+- **bank**: Banking institutions
+- **investment**: Investment platforms and brokers
+- **insurance**: Insurance providers
+- **legal**: Legal services
+- **government**: Government agencies (HMRC, IRS, etc.)
+- **employer**: Current and previous employers
+- **utility**: Utility providers
+- **other**: Other financial entities
+
+### Global Options for Entity Command
+
+| Option | Description |
+|----------|-------------|
+| `--type` | Filter entities by type (e.g., accountant, bank) |
+| `--format` | Output format (choices: text, json, csv, default: text) |
+| `--config-file` | Path to entity configuration file |
 
 ## Investment Tracking (Planned)
 
@@ -266,7 +315,7 @@ finx savings update "New Car" --current 5000
 
 ## Configuration
 
-The tool uses three YAML configuration files:
+The tool uses four YAML configuration files:
 
 ### Base Configuration (finx_base.yml)
 
@@ -345,6 +394,23 @@ directory_mapping:
     documents:
       - estate/wills
       - estate/power_of_attorney
+```
+
+### Entity Database (finx_entities.yml)
+
+Stores contact details for financial entities:
+```yaml
+entities:
+  - name: "Example Accountants Ltd"
+    type: "accountant"
+    contact:
+      primary: "John Smith"
+      email: "john@exampleaccountants.com"
+    address:
+      street: "123 Accounting Street"
+      city: "London"
+      postcode: "EC1A 1AA"
+      country: "UK"
 ```
 
 ## Output Interpretation (Tax Documents)
@@ -489,3 +555,8 @@ finx tax status --verbose
 - The private configuration file should NOT be committed to version control
 - Password protection is used for zip files containing tax documents
 - No data is sent to external servers; all processing is done locally
+
+
+
+
+

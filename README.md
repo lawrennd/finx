@@ -20,6 +20,12 @@ A command-line toolkit for managing personal finances, including tax document or
   - Validation of document completeness for specific tax years
   - Multiple output formats (text, JSON, CSV)
 
+- **Entity management**: Track contact details for financial entities
+  - Store contact information for accountants, banks, and other financial entities
+  - Support for different entity types (accountants, banks, investment platforms, etc.)
+  - Check for missing entity information in configuration files
+  - Maintain addresses, URLs, and notes for each entity
+
 ## Planned Features (Coming Soon)
 
 - **Investment tracking**: Monitor investment performance across accounts
@@ -69,6 +75,32 @@ finx tax zip --year 2023
 # Update document configuration with inferred dates
 finx tax update-dates
 ```
+
+### Entity Management
+
+```bash
+# List all entities
+finx entities list
+
+# List entities of a specific type
+finx entities list --type accountant
+
+# Check for missing entities
+finx entities check
+```
+
+The tool maintains a database of financial entities and their contact details in `finx_entities.yml`. Each entity can be one of the following types:
+- **accountant**: Tax and accounting services
+- **bank**: Banking institutions
+- **investment**: Investment platforms and brokers
+- **insurance**: Insurance providers
+- **legal**: Legal services
+- **government**: Government agencies (HMRC, IRS, etc.)
+- **employer**: Current and previous employers
+- **utility**: Utility providers
+- **other**: Other financial entities
+
+The `check` command compares entities mentioned in your configuration files with those in the entities database, helping you maintain complete contact information for all your financial relationships.
 
 ### Investment Tracking (Planned)
 
@@ -128,6 +160,7 @@ The tool uses YAML configuration files to separate public patterns from private 
 - **Base Configuration**: Public patterns and configurations that can be shared
 - **Private Configuration**: Account-specific information (not committed to version control)
 - **Directory Mapping**: Defines where different document types are stored
+- **Entity Database**: Stores contact details for financial entities
 
 See the [Usage Guide](docs/usage.md) for detailed configuration examples.
 
