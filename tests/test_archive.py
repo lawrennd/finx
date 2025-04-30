@@ -4,7 +4,7 @@ import os
 import zipfile
 from pathlib import Path
 from unittest import TestCase
-from tax_assistant.archive import check_missing_files, create_zip_archive, create_password_protected_zip
+from finx.archive import check_missing_files, create_zip_archive, create_password_protected_zip
 
 class TestArchive(TestCase):
     def setUp(self):
@@ -25,7 +25,7 @@ class TestArchive(TestCase):
         self.relpath_patcher.start()
 
         # Mock getpass to avoid waiting for input
-        self.getpass_patcher = patch('tax_assistant.archive.getpass', return_value='test_password')
+        self.getpass_patcher = patch('finx.archive.getpass', return_value='test_password')
         self.getpass_patcher.start()
 
     def tearDown(self):
@@ -74,11 +74,11 @@ class TestArchive(TestCase):
 
     def test_create_zip_archive(self):
         """Test the create_zip_archive function."""
-        with patch('tax_assistant.checker.TaxDocumentChecker') as mock_checker_class:
+        with patch('finx.checker.TaxDocumentChecker') as mock_checker_class:
             mock_instance = MagicMock()
             mock_checker_class.return_value = mock_instance
             
-            with patch('tax_assistant.archive.create_password_protected_zip') as mock_zip_creator:
+            with patch('finx.archive.create_password_protected_zip') as mock_zip_creator:
                 mock_zip_creator.return_value = True
                 
                 result = create_zip_archive(
@@ -114,7 +114,7 @@ class TestArchive(TestCase):
         mock_checker.base_path = '/test'
         
         # Case where user cancels zip creation due to missing files
-        with patch('tax_assistant.archive.check_missing_files') as mock_check_missing:
+        with patch('finx.archive.check_missing_files') as mock_check_missing:
             mock_check_missing.return_value = (
                 [{'path': '/test/file.pdf', 'name': 'test_doc', 'url': 'https://example.com'}],
                 False
@@ -141,7 +141,7 @@ class TestArchive(TestCase):
         mock_checker.find_files_matching_pattern.return_value = ['/test/file.pdf']
         
         # Test in dummy mode
-        with patch('tax_assistant.archive.check_missing_files') as mock_check_missing:
+        with patch('finx.archive.check_missing_files') as mock_check_missing:
             mock_check_missing.return_value = ([], True)
             
             with patch('builtins.print'):
@@ -164,7 +164,7 @@ class TestArchive(TestCase):
         mock_checker.find_files_matching_pattern.return_value = ['/test/file.pdf']
         
         # Test in real mode with password
-        with patch('tax_assistant.archive.check_missing_files') as mock_check_missing:
+        with patch('finx.archive.check_missing_files') as mock_check_missing:
             mock_check_missing.return_value = ([], True)
             
             with patch('builtins.print'):
@@ -198,12 +198,12 @@ class TestArchive(TestCase):
         mock_checker.find_files_matching_pattern.return_value = ['/test/file.pdf']
         
         # Test password mismatch
-        with patch('tax_assistant.archive.check_missing_files') as mock_check_missing:
+        with patch('finx.archive.check_missing_files') as mock_check_missing:
             mock_check_missing.return_value = ([], True)
             
             with patch('builtins.print'):
                 # Override the default mock with one that returns different passwords
-                with patch('tax_assistant.archive.getpass') as mock_getpass:
+                with patch('finx.archive.getpass') as mock_getpass:
                     mock_getpass.side_effect = ['password1', 'password2']  # Different passwords
                     
                     result = create_password_protected_zip(mock_checker)
@@ -226,7 +226,7 @@ class TestArchive(TestCase):
         mock_checker.find_files_matching_pattern.return_value = ['/test/file.pdf']
         
         # Test exception handling
-        with patch('tax_assistant.archive.check_missing_files') as mock_check_missing:
+        with patch('finx.archive.check_missing_files') as mock_check_missing:
             mock_check_missing.return_value = ([], True)
             
             with patch('builtins.print'):

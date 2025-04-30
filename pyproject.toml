@@ -3,13 +3,13 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "tax_assistant"
+name = "finx"
 version = "0.1.0"
-description = "A tool for listing and checking tax documents"
-authors = ["Your Name <your.email@example.com>"]
+description = "A tool for listing and checking finances"
+authors = ["Neil Lawrence <your.email@example.com>"]
 readme = "README.md"
 license = "MIT"
-packages = [{include = "tax_assistant"}]
+packages = [{include = "finx"}]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
@@ -35,7 +35,7 @@ isort = "^5.0"
 flake8 = "^6.0"
 
 [tool.poetry.scripts]
-finx = "tax_assistant.cli:main"
+finx = "finx.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
