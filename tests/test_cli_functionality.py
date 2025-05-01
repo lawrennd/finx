@@ -17,7 +17,7 @@ class TestCLIFunctionality:
     @pytest.fixture
     def mock_checker(self):
         """Return a mock TaxDocumentChecker instance."""
-        with patch('finx.cli.TaxDocumentChecker') as mock_class:
+        with patch('finx.cli_typer.TaxDocumentChecker') as mock_class:
             mock_instance = MagicMock()
             mock_class.return_value = mock_instance
             yield mock_instance
@@ -112,7 +112,7 @@ class TestCLIFunctionality:
     
     def test_tax_status_functionality(self, mock_checker):
         """Test that the tax status command correctly checks document status."""
-        from finx.cli import main
+        from finx.cli_typer import main
         
         # Setup mock behavior
         mock_checker.list_available_years.return_value = ['2023']
@@ -125,16 +125,18 @@ class TestCLIFunctionality:
         
         with patch('sys.argv', ['finx', 'tax', 'status']):
             with patch('sys.stdout'):  # Suppress stdout
-                result = main()
+                with pytest.raises(SystemExit) as e:
+                    main()
+                # Success exit code
+                assert e.value.code == 0
         
         # Verify expected behavior
-        assert result == 0  # Successful execution
         mock_checker.list_available_years.assert_called_once()
         mock_checker.check_year.assert_called_once()
     
     def test_tax_status_with_year_functionality(self, mock_checker):
         """Test that the tax status command with year checks specific year."""
-        from finx.cli import main
+        from finx.cli_typer import main
         
         # Setup mock behavior
         mock_checker.check_year.return_value = {
@@ -146,15 +148,17 @@ class TestCLIFunctionality:
         
         with patch('sys.argv', ['finx', 'tax', 'status', '--year', '2022']):
             with patch('sys.stdout'):  # Suppress stdout
-                result = main()
+                with pytest.raises(SystemExit) as e:
+                    main()
+                # Success exit code
+                assert e.value.code == 0
         
         # Verify expected behavior
-        assert result == 0  # Successful execution
         mock_checker.check_year.assert_called_once_with('2022', list_missing=False)
     
     def test_tax_missing_functionality(self, mock_checker):
         """Test that the tax missing command lists missing documents."""
-        from finx.cli import main
+        from finx.cli_typer import main
         
         # Setup mock behavior
         mock_checker.list_available_years.return_value = ['2023']
@@ -174,16 +178,18 @@ class TestCLIFunctionality:
         
         with patch('sys.argv', ['finx', 'tax', 'missing']):
             with patch('sys.stdout'):  # Suppress stdout
-                result = main()
+                with pytest.raises(SystemExit) as e:
+                    main()
+                # Success exit code
+                assert e.value.code == 0
         
         # Verify expected behavior
-        assert result == 0  # Successful execution
         mock_checker.list_available_years.assert_called_once()
         mock_checker.check_year.assert_called_once_with('2023', list_missing=True)
     
     def test_tax_missing_with_json_functionality(self, mock_checker):
         """Test that the tax missing command with JSON format outputs JSON."""
-        from finx.cli import main
+        from finx.cli_typer import main
         
         # Setup mock behavior
         mock_checker.list_available_years.return_value = ['2023']
@@ -204,31 +210,35 @@ class TestCLIFunctionality:
         with patch('sys.argv', ['finx', 'tax', 'missing', '--format', 'json']):
             with patch('json.dumps') as mock_json_dumps:
                 with patch('sys.stdout'):  # Suppress stdout
-                    result = main()
+                    with pytest.raises(SystemExit) as e:
+                        main()
+                    # Success exit code
+                    assert e.value.code == 0
         
         # Verify expected behavior
-        assert result == 0  # Successful execution
         mock_json_dumps.assert_called_once()
         # Just check that json.dumps was called, not the exact format
         # since this might change between argparse and Typer implementations
     
     def test_tax_update_dates_functionality(self, mock_checker):
         """Test that the tax update-dates command updates YAML with dates."""
-        from finx.cli import main
+        from finx.cli_typer import main
         
         with patch('sys.argv', ['finx', 'tax', 'update-dates']):
             with patch('sys.stdout'):  # Suppress stdout
-                result = main()
+                with pytest.raises(SystemExit) as e:
+                    main()
+                # Success exit code
+                assert e.value.code == 0
         
         # Verify expected behavior
-        assert result == 0  # Successful execution
         mock_checker.update_yaml_with_dates.assert_called_once()
     
     def test_entities_check_functionality(self):
         """Test that the entities check command identifies missing entities."""
         # This needs to be tested differently since it uses Click directly
         # We'll test the underlying function instead
-        from finx.cli import extract_entity_names
+        from finx.cli_typer import extract_entity_names
         
         # Test config parsing with how the function is currently implemented
         test_config = {
@@ -332,14 +342,13 @@ class TestCLIFunctionality:
     
     def test_error_handling_functionality(self, mock_checker):
         """Test CLI error handling works correctly."""
-        from finx.cli import main
+        from finx.cli_typer import main
         
         # Make the mock throw an exception
         mock_checker.list_available_years.side_effect = Exception("Test error")
         
         with patch('sys.argv', ['finx', 'tax', 'status']):
             with patch('sys.stderr'):  # Suppress stderr
+                # In the error case, main() returns 1 instead of raising SystemExit
                 result = main()
-        
-        # Verify expected behavior
-        assert result == 1  # Non-zero exit code on error 
+                assert result == 1 

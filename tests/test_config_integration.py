@@ -565,57 +565,58 @@ class TestConfigIntegration:
     
     def test_cli_commands_with_config_files(self):
         """Test that the CLI commands described in README work with our config files."""
-        # Instead of using subprocess, we'll call the functions directly
-        from finx.cli import tax_status_command, tax_missing_command
-        import argparse
+        # Import the main function from cli_typer
+        from finx.cli_typer import main
         
         # Create test files
         temp_dir = self.create_test_files()
         
-        # Create an args object for tax status command
-        status_args = argparse.Namespace(
-            year='2023',
-            base_path=temp_dir,
-            config_file=str(self.base_config_file),
-            private_config_file=str(self.dummy_config_file),
-            directory_mapping_file=str(self.directory_mapping_file),
-            entities_file=None,
-            verbose=False
-        )
-        
-        # Patch logging to capture output
+        # Patch logging and sys.argv to avoid actual console output
         import io
         import sys
         from unittest.mock import patch
         
         # Test tax status command
-        with patch('sys.stdout', new_callable=io.StringIO) as mock_stdout:
-            with patch('logging.Logger.info') as mock_info:
-                with patch('logging.Logger.warning') as mock_warning:
-                    # Run the command
-                    exit_code = tax_status_command(status_args)
-                    
-                    # Check for warning messages which we can see in the output
-                    assert len(mock_warning.call_args_list) > 0, "Expected warning messages in log output"
-        
-        # Create an args object for tax missing command
-        missing_args = argparse.Namespace(
-            year='2023',
-            base_path=temp_dir,
-            config_file=str(self.base_config_file),
-            private_config_file=str(self.dummy_config_file),
-            directory_mapping_file=str(self.directory_mapping_file),
-            entities_file=None,
-            verbose=False,
-            format='text'
-        )
+        with patch('sys.argv', [
+            'finx', 'tax', 'status',
+            '--year', '2023',
+            '--base-path', temp_dir,
+            '--config-file', str(self.base_config_file),
+            '--private-config-file', str(self.dummy_config_file),
+            '--directory-mapping-file', str(self.directory_mapping_file)
+        ]):
+            with patch('sys.stdout', new_callable=io.StringIO):
+                with patch('logging.Logger.info'):
+                    with patch('logging.Logger.warning') as mock_warning:
+                        # Run the command and catch SystemExit since Typer will exit
+                        try:
+                            main()
+                        except SystemExit as e:
+                            # Check exit code (0 for success)
+                            assert e.code == 0 or e.code == 1, "Expected exit code 0 or 1"
+                        
+                        # Check for warning messages which we can see in the output
+                        assert len(mock_warning.call_args_list) > 0, "Expected warning messages in log output"
         
         # Test tax missing command
-        with patch('sys.stdout', new_callable=io.StringIO) as mock_stdout:
-            with patch('logging.Logger.info') as mock_info:
-                with patch('logging.Logger.warning') as mock_warning:
-                    # Run the command
-                    exit_code = tax_missing_command(missing_args)
-                    
-                    # Check for warning messages
-                    assert len(mock_warning.call_args_list) > 0, "Expected warning messages in log output" 
+        with patch('sys.argv', [
+            'finx', 'tax', 'missing',
+            '--year', '2023',
+            '--base-path', temp_dir,
+            '--config-file', str(self.base_config_file),
+            '--private-config-file', str(self.dummy_config_file),
+            '--directory-mapping-file', str(self.directory_mapping_file),
+            '--format', 'text'
+        ]):
+            with patch('sys.stdout', new_callable=io.StringIO):
+                with patch('logging.Logger.info'):
+                    with patch('logging.Logger.warning') as mock_warning:
+                        # Run the command and catch SystemExit
+                        try:
+                            main()
+                        except SystemExit as e:
+                            # Check exit code (0 for success)
+                            assert e.code == 0 or e.code == 1, "Expected exit code 0 or 1"
+                        
+                        # Check for warning messages
+                        assert len(mock_warning.call_args_list) > 0, "Expected warning messages in log output" 
