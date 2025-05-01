@@ -1,0 +1,222 @@
+# Entity types and their contact details
+# Types:
+# - accountant: Tax and accounting services
+# - bank: Banking institutions
+# - investment: Investment platforms and brokers
+# - insurance: Insurance providers
+# - legal: Legal services
+# - government: Government agencies (HMRC, IRS, etc.)
+# - employer: Current and previous employers
+# - utility: Utility providers
+# - other: Other financial entities
+
+entities:
+  - name: "Example Accountants Ltd"
+    type: "accountant"
+    contact:
+      primary: "John Smith"
+      email: "john@exampleaccountants.com"
+      phone: "+44 20 1234 5678"
+    address:
+      street: "123 Accounting Street"
+      city: "London"
+      postcode: "EC1A 1AA"
+      country: "UK"
+    url: "https://exampleaccountants.com"
+    notes: "Main accountant for personal and business taxes"
+
+  - name: "Example Bank"
+    type: "bank"
+    contact:
+      primary: "Customer Service"
+      email: "support@examplebank.com"
+      phone: "+44 800 123 4567"
+    address:
+      street: "456 Banking Avenue"
+      city: "London"
+      postcode: "EC2B 2BB"
+      country: "UK"
+    url: "https://examplebank.com"
+    notes: "Main current account"
+    
+  - name: "Example Bank - Joint Account"
+    type: "bank"
+    contact:
+      primary: "Customer Service"
+      email: "support@examplebank.com"
+      phone: "+44 800 123 4567"
+    address:
+      street: "456 Banking Avenue"
+      city: "London"
+      postcode: "EC2B 2BB"
+      country: "UK"
+    url: "https://examplebank.com/joint"
+    notes: "Joint account with partner"
+    
+  - name: "Example Bank - Savings"
+    type: "bank"
+    contact:
+      primary: "Customer Service"
+      email: "support@examplebank.com"
+      phone: "+44 800 123 4567"
+    address:
+      street: "456 Banking Avenue"
+      city: "London"
+      postcode: "EC2B 2BB"
+      country: "UK"
+    url: "https://examplebank.com/savings"
+    notes: "Savings account"
+    
+  - name: "Another Bank"
+    type: "bank"
+    contact:
+      primary: "Customer Service"
+      email: "help@anotherbank.com"
+      phone: "+44 800 987 6543"
+    address:
+      street: "789 Bank Street"
+      city: "London"
+      postcode: "EC3C 3CC"
+      country: "UK"
+    url: "https://anotherbank.com"
+    notes: "Secondary current account"
+
+  - name: "Example US Bank - Savings"
+    type: "bank"
+    contact:
+      primary: "US Support"
+      email: "support@exampleusbank.com"
+      phone: "+1 800 123 4567"
+    address:
+      street: "123 Main Street"
+      city: "New York"
+      postcode: "10001"
+      country: "US"
+    url: "https://exampleusbank.com/savings"
+    notes: "US savings account"
+    
+  - name: "Another US Bank - Savings"
+    type: "bank"
+    contact:
+      primary: "US Support"
+      email: "support@anotherusbank.com"
+      phone: "+1 800 987 6543"
+    address:
+      street: "456 Broadway"
+      city: "New York"
+      postcode: "10002"
+      country: "US"
+    url: "https://anotherusbank.com/savings"
+    notes: "Second US savings account"
+
+  - name: "Example Investment Platform"
+    type: "investment"
+    contact:
+      primary: "Investment Support"
+      email: "support@exampleinvest.com"
+      phone: "+44 800 765 4321"
+    address:
+      street: "789 Investment Square"
+      city: "London"
+      postcode: "EC3C 3CC"
+      country: "UK"
+    url: "https://exampleinvest.com"
+    notes: "ISA and GIA accounts"
+    
+  - name: "Another Investment Platform"
+    type: "investment"
+    contact:
+      primary: "Investment Support"
+      email: "support@anotherinvest.com"
+      phone: "+44 800 876 5432"
+    address:
+      street: "321 Market Street"
+      city: "London"
+      postcode: "EC4D 4DD"
+      country: "UK"
+    url: "https://anotherinvest.com"
+    notes: "SIPP account"
+    
+  - name: "Example US Investment"
+    type: "investment"
+    contact:
+      primary: "US Investment Support"
+      email: "support@exampleusinvest.com"
+      phone: "+1 800 345 6789"
+    address:
+      street: "789 Wall Street"
+      city: "New York"
+      postcode: "10005"
+      country: "US"
+    url: "https://exampleusinvest.com"
+    notes: "US brokerage account"
+    
+  - name: "Another US Investment"
+    type: "investment"
+    contact:
+      primary: "US Investment Support"
+      email: "support@anotherusinvest.com"
+      phone: "+1 800 567 8901"
+    address:
+      street: "456 Wall Street"
+      city: "New York"
+      postcode: "10005"
+      country: "US"
+    url: "https://anotherusinvest.com"
+    notes: "US mutual funds"
+
+  - name: "Example Employer Ltd"
+    type: "employer"
+    contact:
+      primary: "HR Department"
+      email: "hr@exampleemployer.com"
+      phone: "+44 20 9876 5432"
+    address:
+      street: "123 Work Street"
+      city: "London"
+      postcode: "W1A 1AA"
+      country: "UK"
+    url: "https://exampleemployer.com/hr"
+    notes: "Current employer - started Jan 2023"
+    
+  - name: "Another Employer Ltd"
+    type: "employer"
+    contact:
+      primary: "HR Department"
+      email: "hr@anotheremployer.com"
+      phone: "+44 20 8765 4321"
+    address:
+      street: "456 Office Road"
+      city: "London"
+      postcode: "W2B 2BB"
+      country: "UK"
+    url: "https://anotheremployer.com/hr"
+    notes: "Previous employer - Jan-Dec 2023"
+    
+  - name: "Previous Employer Ltd"
+    type: "employer"
+    contact:
+      primary: "HR Department"
+      email: "hr@previousemployer.com"
+      phone: "+44 20 7654 3210"
+    address:
+      street: "789 Old Street"
+      city: "London"
+      postcode: "W3C 3CC"
+      country: "UK"
+    url: "https://previousemployer.com/hr"
+    notes: "Previous employer - 2020-2022"
+    
+  - name: "Example Government Agency"
+    type: "government"
+    contact:
+      primary: "Support"
+      email: "support@gov.example"
+      phone: "+44 300 123 4567"
+    address:
+      street: "Government House"
+      city: "London"
+      postcode: "G1A 1AA"
+      country: "UK"
+    url: "https://gov.example/tax"
+    notes: "Tax authority" 
