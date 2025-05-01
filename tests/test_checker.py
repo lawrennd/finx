@@ -11,16 +11,16 @@ from io import StringIO
 from contextlib import redirect_stdout
 import logging
 import pytest
-from finx.checker import TaxDocumentChecker
+from finx.checker import FinancialDocumentManager
 
 # Add the parent directory to the path so we can import the script
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from finx.checker import TaxDocumentChecker, FREQUENCY_EXPECTATIONS
+from finx.checker import FinancialDocumentManager, FREQUENCY_EXPECTATIONS
 
-class TestTaxDocumentChecker(unittest.TestCase):
+class TestFinancialDocumentManager(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
-        self.checker = TaxDocumentChecker(self.temp_dir)
+        self.checker = FinancialDocumentManager(self.temp_dir)
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
@@ -78,7 +78,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
             config_path = f.name
 
         try:
-            checker = TaxDocumentChecker(self.temp_dir, config_file=config_path)
+            checker = FinancialDocumentManager(self.temp_dir, config_file=config_path)
             config = checker.load_base_config()
             self.assertEqual(config, test_config)
         finally:
@@ -370,7 +370,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
         try:
             # Test loading invalid YAML
             with self.assertLogs(level='ERROR') as log:
-                checker = TaxDocumentChecker(base_path=self.temp_dir, config_file=temp_path)
+                checker = FinancialDocumentManager(base_path=self.temp_dir, config_file=temp_path)
                 config = checker.load_base_config()
                 self.assertEqual(config, {})
                 self.assertIn("Error parsing base configuration file", log.output[0])
@@ -397,10 +397,10 @@ class TestTaxDocumentChecker(unittest.TestCase):
     def test_main_function(self):
         """Test the main function."""
         test_args = ['--year', '2023']
-        with patch('sys.argv', ['tax-document-checker'] + test_args):
+        with patch('sys.argv', ['financial-document-manager'] + test_args):
             with patch('argparse.ArgumentParser.parse_args') as mock_args:
                 mock_args.return_value = MagicMock(year='2023', update_dates=False, log_level='INFO', list_missing=False)
-                with patch.object(TaxDocumentChecker, 'check_year') as mock_check:
+                with patch.object(FinancialDocumentManager, 'check_year') as mock_check:
                     mock_check.return_value = True
                     with patch('os.path.dirname', return_value='/test/path'):
                         from finx.checker import main
@@ -410,10 +410,10 @@ class TestTaxDocumentChecker(unittest.TestCase):
     def test_main_function_update_dates(self):
         """Test the main function with update_dates flag."""
         test_args = ['--update-dates']
-        with patch('sys.argv', ['tax-document-checker'] + test_args):
+        with patch('sys.argv', ['financial-document-manager'] + test_args):
             with patch('argparse.ArgumentParser.parse_args') as mock_args:
                 mock_args.return_value = MagicMock(year=None, update_dates=True, log_level='INFO')
-                with patch.object(TaxDocumentChecker, 'update_yaml_with_dates') as mock_update:
+                with patch.object(FinancialDocumentManager, 'update_yaml_with_dates') as mock_update:
                     with patch('os.path.dirname', return_value='/test/path'):
                         from finx.checker import main
                         main()
@@ -421,12 +421,12 @@ class TestTaxDocumentChecker(unittest.TestCase):
 
     def test_main_function_no_args(self):
         """Test the main function with no arguments."""
-        with patch('sys.argv', ['tax-document-checker']):
+        with patch('sys.argv', ['financial-document-manager']):
             with patch('argparse.ArgumentParser.parse_args') as mock_args:
                 mock_args.return_value = MagicMock(year=None, update_dates=False, log_level='INFO', list_missing=False)
-                with patch.object(TaxDocumentChecker, 'list_available_years') as mock_list:
+                with patch.object(FinancialDocumentManager, 'list_available_years') as mock_list:
                     mock_list.return_value = ['2022', '2023']
-                    with patch.object(TaxDocumentChecker, 'check_year') as mock_check:
+                    with patch.object(FinancialDocumentManager, 'check_year') as mock_check:
                         with patch('os.path.dirname', return_value='/test/path'):
                             from finx.checker import main
                             main()
@@ -722,7 +722,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
         try:
             # Test loading invalid YAML
             with self.assertLogs(level='ERROR') as log:
-                checker = TaxDocumentChecker(base_path=self.temp_dir, directory_mapping_file=temp_path)
+                checker = FinancialDocumentManager(base_path=self.temp_dir, directory_mapping_file=temp_path)
                 mapping = checker.load_directory_mapping()
                 self.assertEqual(mapping, {})
                 self.assertIn("Error parsing directory mapping file", log.output[0])
@@ -1035,7 +1035,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
             yaml.dump(dummy_config_data, f)
         
         # Create a new checker with both files available
-        checker = TaxDocumentChecker(self.temp_dir, verbose=True)
+        checker = FinancialDocumentManager(self.temp_dir, verbose=True)
         
         # Verify that the private config patterns are present in the flattened patterns
         # Check employment patterns
@@ -1142,7 +1142,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
             }]
         }
         
-        checker = TaxDocumentChecker(base_path=self.temp_dir, config=config)
+        checker = FinancialDocumentManager(base_path=self.temp_dir, config=config)
         checker.verbose = True  # Enable verbose logging
 
         # Test without list_missing
@@ -1193,7 +1193,7 @@ class TestTaxDocumentChecker(unittest.TestCase):
         self.assertIsNone(result)
         
         # Test with a checker that has no base_path
-        checker_no_base = TaxDocumentChecker(config={'test': 'value'})  # Pass direct config to avoid file operations
+        checker_no_base = FinancialDocumentManager(config={'test': 'value'})  # Pass direct config to avoid file operations
         result = checker_no_base.find_config_file('test_config.yml')
         self.assertIsNone(result)
 

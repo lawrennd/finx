@@ -4,7 +4,7 @@ import yaml
 import tempfile
 import shutil
 from pathlib import Path
-from finx.checker import TaxDocumentChecker
+from finx.checker import FinancialDocumentManager
 import argparse
 
 class TestConfigIntegration:
@@ -29,7 +29,7 @@ class TestConfigIntegration:
             self.directory_mapping = yaml.safe_load(f)
             
         # Initialize checker with configurations
-        self.checker = TaxDocumentChecker(
+        self.checker = FinancialDocumentManager(
             base_path=self.base_path, 
             config_file=self.base_config_file,
             private_config_file=self.dummy_config_file,
@@ -198,7 +198,7 @@ class TestConfigIntegration:
         assert isinstance(mapping['additional'], list)
     
     def test_checker_initialization(self):
-        """Test that the TaxDocumentChecker initializes correctly with the config files."""
+        """Test that the FinancialDocumentManager initializes correctly with the config files."""
         # Verify that the checker has loaded the configurations
         assert self.checker.base_config is not None
         assert self.checker.private_config is not None
@@ -414,8 +414,8 @@ class TestConfigIntegration:
             with open(directory_mapping_file, "w") as f:
                 yaml.dump(directory_mapping, f)
 
-            # Use the TaxDocumentChecker to find the files
-            checker = TaxDocumentChecker(
+            # Use the FinancialDocumentManager to find the files
+            checker = FinancialDocumentManager(
                 config_file=config_file,
                 base_path=tmpdirname,
                 entities_file=entities_file,
@@ -444,7 +444,7 @@ class TestConfigIntegration:
         temp_dir = self.create_test_files()
         
         # Create a new checker with the temp directory as base path
-        test_checker = TaxDocumentChecker(
+        test_checker = FinancialDocumentManager(
             base_path=temp_dir, 
             config_file=self.base_config_file,
             private_config_file=self.dummy_config_file,

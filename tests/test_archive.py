@@ -74,7 +74,7 @@ class TestArchive(TestCase):
 
     def test_create_zip_archive(self):
         """Test the create_zip_archive function."""
-        with patch('finx.checker.TaxDocumentChecker') as mock_checker_class:
+        with patch('finx.checker.FinancialDocumentManager') as mock_checker_class:
             mock_instance = MagicMock()
             mock_checker_class.return_value = mock_instance
             

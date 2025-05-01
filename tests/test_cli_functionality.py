@@ -18,8 +18,8 @@ class TestCLIFunctionality:
     
     @pytest.fixture
     def mock_checker(self):
-        """Return a mock TaxDocumentChecker instance."""
-        with patch('finx.cli_typer.TaxDocumentChecker') as mock_class:
+        """Return a mock FinancialDocumentManager instance."""
+        with patch('finx.cli_typer.FinancialDocumentManager') as mock_class:
             mock_instance = MagicMock()
             mock_class.return_value = mock_instance
             yield mock_instance

@@ -50,7 +50,7 @@ FREQUENCY_EXPECTATIONS = {
     'once': 1
 }
 
-class TaxDocumentChecker:
+class FinancialDocumentManager:
     def __init__(self, base_path=None, tax_year_path=None, config_file=None, private_config_file=None, directory_mapping_file=None, entities_file=None, verbose=False, config=None):
         """Initialize the tax document checker.
         
@@ -64,14 +64,14 @@ class TaxDocumentChecker:
             verbose: Whether to print verbose output
             config: Optional direct configuration dictionary to use instead of loading from files
         """
-        self.logger = logging.getLogger('TaxDocumentChecker')
+        self.logger = logging.getLogger('FinancialDocumentManager')
         self.base_path = Path(base_path) if base_path else None
         self.tax_year_path = Path(tax_year_path) if tax_year_path else None
         self.verbose = verbose
         
         if self.verbose:
             self.logger.setLevel(logging.DEBUG)
-            self.logger.debug(f"Initializing TaxDocumentChecker with base_path: {self.base_path}")
+            self.logger.debug(f"Initializing FinancialDocumentManager with base_path: {self.base_path}")
         
         # If direct config is provided, use it instead of loading from files
         if config is not None:
@@ -1150,7 +1150,7 @@ def main():
     
     # Assuming the script is run from the parent directory of the tax folders
     base_path = os.path.dirname(os.path.abspath(__file__))
-    checker = TaxDocumentChecker(base_path, verbose=args.verbose)
+    checker = FinancialDocumentManager(base_path, verbose=args.verbose)
     
     if args.verbose:
         logger.debug(f"Base path: {base_path}")

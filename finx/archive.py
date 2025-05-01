@@ -9,10 +9,10 @@ from getpass import getpass
 
 def check_missing_files(checker, year=None):
     """
-    Check for missing files using the TaxDocumentChecker.
+    Check for missing files using the FinancialDocumentManager.
     
     Args:
-        checker: TaxDocumentChecker instance
+        checker: FinancialDocumentManager instance
         year: Specific year to check (optional)
     
     Returns:
@@ -53,10 +53,10 @@ def create_zip_archive(year=None, dummy=False, base_path=None, config_file=None,
         bool: True if successful, False otherwise
     """
     # Import here to avoid circular imports
-    from .checker import TaxDocumentChecker
+    from .checker import FinancialDocumentManager
     
     # Initialize the checker
-    checker = TaxDocumentChecker(
+    checker = FinancialDocumentManager(
         base_path=base_path,
         config_file=config_file,
         private_config_file=private_config_file,
@@ -78,7 +78,7 @@ def create_password_protected_zip(checker, year=None, output_path=None, password
     Create a password-protected zip file containing tax documents.
     
     Args:
-        checker: TaxDocumentChecker instance
+        checker: FinancialDocumentManager instance
         year: Specific year to include (optional)
         output_path: Path where to save the zip file (optional)
         password: Password for the zip file (optional)

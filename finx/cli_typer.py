@@ -12,7 +12,7 @@ import typer
 import click
 import os
 import yaml
-from .checker import TaxDocumentChecker
+from .checker import FinancialDocumentManager
 from .archive import create_zip_archive
 from .entities import EntityManager
 
@@ -192,7 +192,7 @@ def tax_status(
     """Check tax document status for one or more years."""
     logger = logging.getLogger('finx')
     
-    checker = TaxDocumentChecker(
+    checker = FinancialDocumentManager(
         base_path=base_path,
         config_file=config_file,
         private_config_file=private_config_file,
@@ -239,7 +239,7 @@ def tax_missing(
     """List missing tax documents."""
     logger = logging.getLogger('finx')
     
-    checker = TaxDocumentChecker(
+    checker = FinancialDocumentManager(
         base_path=base_path,
         config_file=config_file,
         private_config_file=private_config_file,
@@ -335,7 +335,7 @@ def tax_update_dates(
     """Update the configuration with inferred dates."""
     logger = logging.getLogger('finx')
     
-    checker = TaxDocumentChecker(
+    checker = FinancialDocumentManager(
         base_path=base_path,
         config_file=config_file,
         private_config_file=private_config_file,
