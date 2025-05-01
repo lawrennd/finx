@@ -26,6 +26,7 @@ class EntityType(Enum):
 
 @dataclass
 class Entity:
+    id: str
     name: str
     type: Union[EntityType, str]
     contact: Dict[str, str] = None
@@ -37,6 +38,9 @@ class Entity:
 
     def __post_init__(self):
         """Initialize default values and validate required fields."""
+        if not self.id:
+            raise ValueError("Entity id is required")
+            
         if not self.name:
             raise ValueError("Entity name is required")
         
@@ -61,11 +65,12 @@ class Entity:
 
     def validate(self) -> bool:
         """Validate the entity has required fields."""
-        return bool(self.name and isinstance(self.type, EntityType))
+        return bool(self.id and self.name and isinstance(self.type, EntityType))
 
     def to_dict(self) -> Dict:
         """Convert entity to dictionary for YAML storage."""
         result = {
+            "id": self.id,
             "name": self.name,
             "type": self.type.value,
             "contact": self.contact,
@@ -130,6 +135,22 @@ class EntityManager:
         except (OSError, IOError) as e:
             print(f"Warning: Could not save entities to {self.yaml_file}: {str(e)}")
 
+    def get_entity_by_id(self, entity_id: str) -> Optional[Entity]:
+        """Get an entity by its ID."""
+        entities = self.load_entities()
+        for entity in entities:
+            if entity.id == entity_id:
+                return entity
+        return None
+
+    def get_entity_by_name(self, entity_name: str) -> Optional[Entity]:
+        """Get an entity by its name (for backward compatibility)."""
+        entities = self.load_entities()
+        for entity in entities:
+            if entity.name == entity_name:
+                return entity
+        return None
+
     def list_entities(self, entity_type: Optional[EntityType] = None) -> List[Entity]:
         """List all entities, optionally filtered by type."""
         entities = self.load_entities()
@@ -137,15 +158,16 @@ class EntityManager:
             return [entity for entity in entities if entity.type == entity_type]
         return entities
 
-    def check_missing_entities(self, entity_names: List[str]) -> List[str]:
+    def check_missing_entities(self, entity_ids: List[str]) -> List[str]:
         """Check for entities in the provided list that don't exist in the database."""
         entities = self.load_entities()
-        known_entities = {entity.name for entity in entities}
-        return [name for name in entity_names if name not in known_entities]
+        known_entity_ids = {entity.id for entity in entities}
+        return [entity_id for entity_id in entity_ids if entity_id not in known_entity_ids]
 
     def format_entity(self, entity: Entity) -> str:
         """Format an entity for display."""
         lines = [
+            f"ID: {entity.id}",
             f"Name: {entity.name}",
             f"Type: {entity.type.value}",
         ]

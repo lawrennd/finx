@@ -279,6 +279,7 @@ class TestCLIFunctionality:
         
         # Test data - create Entity objects instead of dictionaries
         test_entity = Entity(
+            id="test-entity",
             name='Test Entity',
             type=EntityType.BANK,
             contact={'email': 'test@example.com', 'primary': 'John Doe'},

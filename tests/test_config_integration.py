@@ -290,36 +290,42 @@ class TestConfigIntegration:
             test_entities = {
                 "entities": [
                     {
+                        "id": "example-employer",
                         "name": "Example Current Employer",
                         "type": "employer",
                         "url": "https://example-employer.com",
                         "contact": {"email": "hr@example-employer.com"}
                     },
                     {
+                        "id": "another-employer",
                         "name": "Another Current Employer",
                         "type": "employer",
                         "url": "https://another-employer.com",
                         "contact": {"email": "hr@another-employer.com"}
                     },
                     {
+                        "id": "example-investment",
                         "name": "Example Investment Platform",
                         "type": "investment",
                         "url": "https://example-investment.com",
                         "contact": {"email": "support@example-investment.com"}
                     },
                     {
+                        "id": "another-investment",
                         "name": "Another Investment Platform",
                         "type": "investment",
                         "url": "https://another-investment.com",
                         "contact": {"email": "support@another-investment.com"}
                     },
                     {
+                        "id": "example-bank",
                         "name": "Example Bank",
                         "type": "bank",
                         "url": "https://example-bank.com",
                         "contact": {"email": "support@example-bank.com"}
                     },
                     {
+                        "id": "another-bank",
                         "name": "Another Bank",
                         "type": "bank",
                         "url": "https://another-bank.com",
@@ -343,12 +349,14 @@ class TestConfigIntegration:
                     },
                     "current": [
                         {
+                            "id": "example-employer",
                             "name": "EXAMPLE_CURRENT_EMPLOYER",
                             "frequency": "monthly",
                             "patterns": ["example-current-employer"],
                             "start_date": "2020-01-01"
                         },
                         {
+                            "id": "another-employer",
                             "name": "ANOTHER_CURRENT_EMPLOYER",
                             "frequency": "monthly",
                             "patterns": ["another-current-employer"],
@@ -358,30 +366,34 @@ class TestConfigIntegration:
                 },
                 "investment": {
                     "uk": [
-                        {"name": "EXAMPLE_UK_INVESTMENT", "patterns": ["example-uk-investment"]},
-                        {"name": "ANOTHER_UK_INVESTMENT", "patterns": ["another-uk-investment"]}
+                        {"id": "example-uk-investment", "name": "EXAMPLE_UK_INVESTMENT", "patterns": ["example-uk-investment"]},
+                        {"id": "another-uk-investment", "name": "ANOTHER_UK_INVESTMENT", "patterns": ["another-uk-investment"]}
                     ],
                     "us": [
-                        {"name": "EXAMPLE_US_INVESTMENT", "patterns": ["example-us-investment"]},
-                        {"name": "ANOTHER_US_INVESTMENT", "patterns": ["another-us-investment"]}
+                        {"id": "example-us-investment", "name": "EXAMPLE_US_INVESTMENT", "patterns": ["example-us-investment"]},
+                        {"id": "another-us-investment", "name": "ANOTHER_US_INVESTMENT", "patterns": ["another-us-investment"]}
                     ]
                 },
                 "bank": {
                     "uk": [
                         {
+                            "id": "example-uk-bank",
                             "name": "EXAMPLE_UK_BANK",
                             "account_types": [
                                 {
+                                    "id": "example-uk-bank-joint",
                                     "name": "Joint Account",
                                     "patterns": [{"base": "example-uk-bank", "account_type": "joint"}]
                                 },
                                 {
+                                    "id": "example-uk-bank-savings",
                                     "name": "Savings",
                                     "patterns": [{"base": "example-uk-bank", "account_type": "savings"}]
                                 }
                             ]
                         },
                         {
+                            "id": "another-uk-bank",
                             "name": "ANOTHER_UK_BANK",
                             "patterns": ["another-uk-bank"]
                         }
@@ -389,10 +401,10 @@ class TestConfigIntegration:
                     "us": []
                 },
                 "additional": [
-                    {"name": "EXAMPLE_TAX_RETURN", "patterns": ["example-tax-return"]},
-                    {"name": "EXAMPLE_E_FILE", "patterns": ["EXAMPLE-E-FILE"]},
-                    {"name": "EXAMPLE_FEDERAL_TAX", "patterns": ["EXAMPLE_Federal"]},
-                    {"name": "EXAMPLE_FINCEN", "patterns": ["EXAMPLE_FinCEN"]}
+                    {"id": "example-tax-return", "name": "EXAMPLE_TAX_RETURN", "patterns": ["example-tax-return"]},
+                    {"id": "example-e-file", "name": "EXAMPLE_E_FILE", "patterns": ["EXAMPLE-E-FILE"]},
+                    {"id": "example-federal", "name": "EXAMPLE_FEDERAL_TAX", "patterns": ["EXAMPLE_Federal"]},
+                    {"id": "example-fincen", "name": "EXAMPLE_FINCEN", "patterns": ["EXAMPLE_FinCEN"]}
                 ]
             }
             with open(config_file, "w") as f:
@@ -502,18 +514,21 @@ class TestConfigIntegration:
         test_entities = {
             "entities": [
                 {
+                    "id": "example-employer",
                     "name": "Example Current Employer",
                     "type": "employer",
                     "url": "https://employer.example.com",
                     "contact": {"email": "contact@employer.com"}
                 },
                 {
+                    "id": "example-investment",
                     "name": "Example Investment Platform",
                     "type": "investment",
                     "url": "https://investment.example.com",
                     "contact": {"email": "contact@investment.com"}
                 },
                 {
+                    "id": "example-bank",
                     "name": "Example Bank",
                     "type": "bank",
                     "url": "https://bank.example.com",

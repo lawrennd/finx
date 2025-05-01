@@ -12,6 +12,7 @@ class TestEntityManager:
         test_data = {
             "entities": [
                 {
+                    "id": "test-accountants",
                     "name": "Test Accountants Ltd",
                     "type": "accountant",
                     "contact": {
@@ -29,6 +30,7 @@ class TestEntityManager:
                     "notes": "Our primary accountant"
                 },
                 {
+                    "id": "test-bank",
                     "name": "Test Bank",
                     "type": "bank",
                     "contact": {
@@ -91,6 +93,7 @@ class TestEntityManager:
         manager = EntityManager(temp_entities_file)
         entities = [
             Entity(
+                id="new-accountant",
                 name="New Accountant",
                 type=EntityType.ACCOUNTANT,
                 contact={
@@ -127,6 +130,7 @@ class TestEntityManager:
         manager = EntityManager("/invalid/path/entities.yml")
         entities = [
             Entity(
+                id="test-entity",
                 name="Test Entity",
                 type=EntityType.ACCOUNTANT
             )
@@ -152,15 +156,15 @@ class TestEntityManager:
         manager = EntityManager(temp_entities_file)
         
         # Test with entities that exist
-        existing_entities = ["Test Accountants Ltd", "Test Bank"]
+        existing_entities = ["test-accountants", "test-bank"]
         missing = manager.check_missing_entities(existing_entities)
         assert len(missing) == 0
         
         # Test with missing entities
-        some_entities = ["Test Accountants Ltd", "Nonexistent Entity"]
+        some_entities = ["test-accountants", "nonexistent-entity"]
         missing = manager.check_missing_entities(some_entities)
         assert len(missing) == 1
-        assert missing[0] == "Nonexistent Entity"
+        assert missing[0] == "nonexistent-entity"
 
     @pytest.fixture
     def temp_yaml_file(self, tmp_path):
@@ -169,14 +173,18 @@ class TestEntityManager:
     @pytest.fixture
     def sample_entities(self):
         return [
-            Entity(name="Test Accountant", 
-                  type=EntityType.ACCOUNTANT,
-                  email="test@example.com",
-                  phone="123-456-7890"),
-            Entity(name="Test Bank",
-                  type=EntityType.BANK,
-                  email="bank@example.com",
-                  phone="098-765-4321")
+            Entity(
+                id="test-accountant", 
+                name="Test Accountant", 
+                type=EntityType.ACCOUNTANT,
+                email="test@example.com",
+                phone="123-456-7890"),
+            Entity(
+                id="test-bank",
+                name="Test Bank",
+                type=EntityType.BANK,
+                email="bank@example.com",
+                phone="098-765-4321")
         ]
 
     def test_entity_manager_init(self, temp_yaml_file):
@@ -226,7 +234,7 @@ class TestEntityManager:
         manager = EntityManager(nested_path)
         
         manager.save_entities([
-            Entity(name="Test", type=EntityType.OTHER, email="test@test.com", phone="123")
+            Entity(id="test-other", name="Test", type=EntityType.OTHER, email="test@test.com", phone="123")
         ])
         
         assert nested_path.exists()
@@ -248,6 +256,7 @@ class TestEntityManager:
         """Test formatting an entity for display."""
         # Full entity with all fields
         entity = Entity(
+            id="test-entity",
             name="Test Entity",
             type=EntityType.ACCOUNTANT,
             contact={
@@ -283,6 +292,7 @@ class TestEntityManager:
         
         # Minimal entity
         minimal_entity = Entity(
+            id="minimal-entity",
             name="Minimal Entity",
             type=EntityType.BANK
         )
@@ -299,6 +309,7 @@ class TestEntity:
     def test_entity_creation(self):
         """Test creating an entity with all fields."""
         entity = Entity(
+            id="test-entity",
             name="Test Entity",
             type=EntityType.ACCOUNTANT,
             contact={
@@ -330,6 +341,7 @@ class TestEntity:
     def test_entity_creation_minimal(self):
         """Test creating an entity with minimal required fields."""
         entity = Entity(
+            id="test-entity",
             name="Test Entity",
             type="accountant"  # Test string conversion
         )
@@ -346,33 +358,34 @@ class TestEntity:
     def test_entity_validation(self):
         """Test entity validation."""
         # Valid entity
-        entity = Entity(name="Test", type=EntityType.ACCOUNTANT)
+        entity = Entity(id="test", name="Test", type=EntityType.ACCOUNTANT)
         assert entity.validate()
         
         # Invalid - missing name
         with pytest.raises(ValueError):
-            Entity(name="", type=EntityType.ACCOUNTANT)
+            Entity(id="test-id", name="", type=EntityType.ACCOUNTANT)
         
         # Invalid - invalid type
         with pytest.raises(ValueError):
-            Entity(name="Test", type="invalid_type")
+            Entity(id="test-id", name="Test", type="invalid_type")
 
     def test_entity_type_conversion(self):
         """Test entity type conversion from string."""
         # Test valid conversions
-        entity1 = Entity(name="Test", type="accountant")
+        entity1 = Entity(id="test1", name="Test", type="accountant")
         assert entity1.type == EntityType.ACCOUNTANT
         
-        entity2 = Entity(name="Test", type="bank")
+        entity2 = Entity(id="test2", name="Test", type="bank")
         assert entity2.type == EntityType.BANK
         
         # Test invalid conversion
         with pytest.raises(ValueError):
-            Entity(name="Test", type="invalid")
+            Entity(id="test-invalid", name="Test", type="invalid")
 
     def test_entity_to_dict(self):
         """Test converting entity to dictionary."""
         entity = Entity(
+            id="test-entity",
             name="Test Entity",
             type=EntityType.ACCOUNTANT,
             contact={
@@ -389,6 +402,7 @@ class TestEntity:
         )
         
         data = entity.to_dict()
+        assert data["id"] == "test-entity"
         assert data["name"] == "Test Entity"
         assert data["type"] == "accountant"
         assert data["contact"]["primary"] == "John Doe"
@@ -401,9 +415,10 @@ class TestEntity:
 
     def test_entity_to_dict_minimal(self):
         """Test converting minimal entity to dictionary."""
-        entity = Entity(name="Test", type=EntityType.ACCOUNTANT)
+        entity = Entity(id="test", name="Test", type=EntityType.ACCOUNTANT)
         data = entity.to_dict()
         
+        assert data["id"] == "test"
         assert data["name"] == "Test"
         assert data["type"] == "accountant"
         assert data["contact"] == {}

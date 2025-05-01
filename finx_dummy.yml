@@ -3,6 +3,7 @@
 # Missing end dates mean relationship is currently active.
 additional:
 - frequency: yearly
+  id: tax_return
   name: EXAMPLE_TAX_RETURN
   url: "https://example.com/tax-return"
   patterns:
@@ -10,16 +11,19 @@ additional:
   start_date: '2023-01-01'
   end_date: '2025-01-01'
 - frequency: yearly
+  id: e_file
   name: EXAMPLE_E_FILE
   url: "https://example.com/e-file"
   patterns:
   - base: EXAMPLE-E-FILE
 - frequency: yearly
+  id: federal_tax
   name: EXAMPLE_FEDERAL_TAX
   url: "https://example.com/federal-tax"
   patterns:
   - base: EXAMPLE_Federal
 - frequency: yearly
+  id: fincen
   name: EXAMPLE_FINCEN
   url: "https://example.com/fincen"
   patterns:
@@ -28,6 +32,7 @@ additional:
 # Flat structure for employment - status (current/previous) is determined by dates
 employment:
   - frequency: monthly
+    id: current_employer1
     name: "EXAMPLE_CURRENT_EMPLOYER"
     url: "https://example.com/employer1/payslips"
     annual_document_type: "P60"
@@ -35,6 +40,7 @@ employment:
       - base: example-current-employer
     start_date: '2023-01-01'
   - frequency: monthly
+    id: current_employer2
     name: "ANOTHER_CURRENT_EMPLOYER"
     url: "https://example.com/employer2/payslips"
     annual_document_type: "P60"
@@ -43,6 +49,7 @@ employment:
     start_date: '2023-01-01'
     end_date: '2023-12-31'
   - frequency: yearly
+    id: p45_p60
     name: "EXAMPLE_P45_P60"
     url: "https://example.com/employer1/p45p60"
     patterns:
@@ -51,6 +58,7 @@ employment:
     start_date: '2023-01-01'
     end_date: '2024-12-31'
   - frequency: monthly
+    id: previous_employer
     name: "EXAMPLE_PREVIOUS_EMPLOYER"
     annual_document_type: "P60"
     patterns:
@@ -64,6 +72,7 @@ employment:
 investment:
   uk:
     - frequency: yearly
+      id: uk_investment1
       name: "EXAMPLE_UK_INVESTMENT"
       url: "https://example.com/uk-investment"
       annual_document_type: "Annual Statement"
@@ -71,6 +80,7 @@ investment:
         - base: example-uk-investment
       start_date: '2023-01-01'
     - frequency: monthly
+      id: uk_investment2
       name: "ANOTHER_UK_INVESTMENT"
       url: "https://example.com/another-uk-investment"
       annual_document_type: "Annual Statement"
@@ -80,6 +90,7 @@ investment:
       end_date: '2023-12-31'
   us:
     - frequency: yearly
+      id: us_investment1
       name: "EXAMPLE_US_INVESTMENT"
       url: "https://example.com/us-investment"
       annual_document_type: "1099"
@@ -88,6 +99,7 @@ investment:
           identifiers: ["example1", "example2"]
       start_date: '2023-01-01'
     - frequency: yearly
+      id: us_investment2
       name: "ANOTHER_US_INVESTMENT"
       url: "https://example.com/another-us-investment"
       annual_document_type: "1099"
@@ -98,7 +110,8 @@ investment:
 
 bank:
   uk:
-    - name: "EXAMPLE_UK_BANK - Joint Account"
+    - id: uk_bank1_joint
+      name: "EXAMPLE_UK_BANK - Joint Account"
       url: "https://example.com/uk-bank/joint"
       frequency: monthly
       annual_document_type: "Annual Statement"
@@ -115,7 +128,8 @@ bank:
               identifiers: ["savings"]
           start_date: '2023-01-01'
           end_date: '2024-12-31'
-    - name: "EXAMPLE_UK_BANK - Savings"
+    - id: uk_bank1_savings
+      name: "EXAMPLE_UK_BANK - Savings"
       url: "https://example.com/uk-bank/savings"
       frequency: monthly
       annual_document_type: "Annual Statement"
@@ -126,7 +140,8 @@ bank:
               identifiers: ["savings"]
           start_date: '2023-01-01'
           end_date: '2024-12-31'
-    - name: "ANOTHER_UK_BANK"
+    - id: uk_bank2
+      name: "ANOTHER_UK_BANK"
       url: "https://example.com/another-uk-bank"
       frequency: yearly
       annual_document_type: "Annual Statement"
@@ -135,7 +150,8 @@ bank:
       start_date: '2023-01-01'
       end_date: '2024-12-31'
   us:
-    - name: "EXAMPLE_US_BANK - savings"
+    - id: us_bank1_savings
+      name: "EXAMPLE_US_BANK - savings"
       url: "https://example.com/us-bank/savings"
       frequency: quarterly
       annual_document_type: "1099"
@@ -147,7 +163,8 @@ bank:
                 - savings
           start_date: '2023-01-01'
           end_date: '2023-12-31'
-    - name: "ANOTHER_US_BANK - savings"
+    - id: us_bank2_savings
+      name: "ANOTHER_US_BANK - savings"
       url: "https://example.com/another-us-bank/savings"
       frequency: monthly
       annual_document_type: "1099"

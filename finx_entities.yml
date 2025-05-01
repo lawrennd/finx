@@ -11,7 +11,8 @@
 # - other: Other financial entities
 
 entities:
-  - name: "Example Accountants Ltd"
+  - id: "accountants1"
+    name: "Example Accountants Ltd"
     type: "accountant"
     contact:
       primary: "John Smith"
@@ -25,7 +26,8 @@ entities:
     url: "https://exampleaccountants.com"
     notes: "Main accountant for personal and business taxes"
 
-  - name: "Example Bank"
+  - id: "uk_bank1"
+    name: "Example Bank"
     type: "bank"
     contact:
       primary: "Customer Service"
@@ -39,7 +41,8 @@ entities:
     url: "https://examplebank.com"
     notes: "Main current account"
     
-  - name: "Example Bank - Joint Account"
+  - id: "uk_bank1_joint"
+    name: "Example Bank - Joint Account"
     type: "bank"
     contact:
       primary: "Customer Service"
@@ -53,7 +56,8 @@ entities:
     url: "https://examplebank.com/joint"
     notes: "Joint account with partner"
     
-  - name: "Example Bank - Savings"
+  - id: "uk_bank1_savings"
+    name: "Example Bank - Savings"
     type: "bank"
     contact:
       primary: "Customer Service"
@@ -67,7 +71,8 @@ entities:
     url: "https://examplebank.com/savings"
     notes: "Savings account"
     
-  - name: "Another Bank"
+  - id: "uk_bank2"
+    name: "Another Bank"
     type: "bank"
     contact:
       primary: "Customer Service"
@@ -81,7 +86,8 @@ entities:
     url: "https://anotherbank.com"
     notes: "Secondary current account"
 
-  - name: "Example US Bank - Savings"
+  - id: "us_bank1_savings"
+    name: "Example US Bank - Savings"
     type: "bank"
     contact:
       primary: "US Support"
@@ -95,7 +101,8 @@ entities:
     url: "https://exampleusbank.com/savings"
     notes: "US savings account"
     
-  - name: "Another US Bank - Savings"
+  - id: "us_bank2_savings"
+    name: "Another US Bank - Savings"
     type: "bank"
     contact:
       primary: "US Support"
@@ -109,7 +116,8 @@ entities:
     url: "https://anotherusbank.com/savings"
     notes: "Second US savings account"
 
-  - name: "Example Investment Platform"
+  - id: "uk_investment1"
+    name: "Example Investment Platform"
     type: "investment"
     contact:
       primary: "Investment Support"
@@ -123,7 +131,8 @@ entities:
     url: "https://exampleinvest.com"
     notes: "ISA and GIA accounts"
     
-  - name: "Another Investment Platform"
+  - id: "uk_investment2"
+    name: "Another Investment Platform"
     type: "investment"
     contact:
       primary: "Investment Support"
@@ -137,7 +146,8 @@ entities:
     url: "https://anotherinvest.com"
     notes: "SIPP account"
     
-  - name: "Example US Investment"
+  - id: "us_investment1"
+    name: "Example US Investment"
     type: "investment"
     contact:
       primary: "US Investment Support"
@@ -151,7 +161,8 @@ entities:
     url: "https://exampleusinvest.com"
     notes: "US brokerage account"
     
-  - name: "Another US Investment"
+  - id: "us_investment2"
+    name: "Another US Investment"
     type: "investment"
     contact:
       primary: "US Investment Support"
@@ -165,7 +176,8 @@ entities:
     url: "https://anotherusinvest.com"
     notes: "US mutual funds"
 
-  - name: "Example Employer Ltd"
+  - id: "current_employer1"
+    name: "Example Employer Ltd"
     type: "employer"
     contact:
       primary: "HR Department"
@@ -179,7 +191,8 @@ entities:
     url: "https://exampleemployer.com/hr"
     notes: "Current employer - started Jan 2023"
     
-  - name: "Another Employer Ltd"
+  - id: "current_employer2"
+    name: "Another Employer Ltd"
     type: "employer"
     contact:
       primary: "HR Department"
@@ -193,7 +206,8 @@ entities:
     url: "https://anotheremployer.com/hr"
     notes: "Previous employer - Jan-Dec 2023"
     
-  - name: "Previous Employer Ltd"
+  - id: "previous_employer"
+    name: "Previous Employer Ltd"
     type: "employer"
     contact:
       primary: "HR Department"
@@ -207,7 +221,8 @@ entities:
     url: "https://previousemployer.com/hr"
     notes: "Previous employer - 2020-2022"
     
-  - name: "Example Government Agency"
+  - id: "tax_authority"
+    name: "Example Government Agency"
     type: "government"
     contact:
       primary: "Support"

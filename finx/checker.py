@@ -278,7 +278,7 @@ class FinancialDocumentManager:
         for category, patterns in self.required_patterns.items():
             for pattern_info in patterns:
                 pattern = pattern_info['pattern']
-                name = pattern_info['name']
+                entity_id = pattern_info['id']
                 
                 # Find all matching files across all years
                 matches = self.find_files_matching_pattern(pattern, year=None, category=category)
@@ -294,7 +294,7 @@ class FinancialDocumentManager:
                     if dates:
                         start_date = min(dates)
                         end_date = max(dates)
-                        account_dates[name] = {
+                        account_dates[entity_id] = {
                             'start_date': start_date.strftime('%Y-%m-%d'),
                             'end_date': end_date.strftime('%Y-%m-%d'),
                             'files': sorted([os.path.basename(f) for f in matches])
@@ -369,7 +369,7 @@ class FinancialDocumentManager:
             if isinstance(updated_config['employment'], list):
                 # Already in the flat structure
                 for employer in updated_config['employment']:
-                    account_info = self.account_dates.get(employer['name'])
+                    account_info = self.account_dates.get(employer['id'])
                     if account_info:
                         employer['start_date'] = account_info['start_date']
                         employer['end_date'] = account_info['end_date']
@@ -380,7 +380,7 @@ class FinancialDocumentManager:
                     if category in updated_config['employment']:
                         for employer in updated_config['employment'][category]:
                             # Update dates if available
-                            account_info = self.account_dates.get(employer['name'])
+                            account_info = self.account_dates.get(employer['id'])
                             if account_info:
                                 employer['start_date'] = account_info['start_date']
                                 employer['end_date'] = account_info['end_date']
@@ -393,7 +393,7 @@ class FinancialDocumentManager:
         for region in ['us', 'uk']:
             if region in updated_config.get('investment', {}):
                 for investment in updated_config['investment'][region]:
-                    account_info = self.account_dates.get(investment['name'])
+                    account_info = self.account_dates.get(investment['id'])
                     if account_info:
                         investment['start_date'] = account_info['start_date']
                         investment['end_date'] = account_info['end_date']
@@ -405,13 +405,25 @@ class FinancialDocumentManager:
                     account_types = bank.get('account_types', [])
                     if account_types:
                         for account_type in account_types:
-                            account_name = f"{bank['name']} - {account_type['name']}"
-                            account_info = self.account_dates.get(account_name)
-                            if account_info:
-                                account_type['start_date'] = account_info['start_date']
-                                account_type['end_date'] = account_info['end_date']
+                            # Check if ID is required, don't create one
+                            if 'id' not in account_type:
+                                self.logger.error(f"Error: Missing ID in account_type for bank {bank['id']}")
+                                continue
+                            
+                            if 'patterns' in account_type:
+                                # Combine bank and account_type info
+                                combined_info = {
+                                    'id': account_type['id'],
+                                    'name': f"{bank['name']} - {account_type['name']}",
+                                    'frequency': account_type.get('frequency', bank.get('frequency', 'monthly')),
+                                    'start_date': account_type.get('start_date', bank.get('start_date')),
+                                    'end_date': account_type.get('end_date', bank.get('end_date')),
+                                    'url': bank.get('url')
+                                }
+                                for pattern in account_type['patterns']:
+                                    process_pattern(pattern, combined_info, f'bank_{region}')
                     else:
-                        account_info = self.account_dates.get(bank['name'])
+                        account_info = self.account_dates.get(bank['id'])
                         if account_info:
                             bank['start_date'] = account_info['start_date']
                             bank['end_date'] = account_info['end_date']
@@ -419,7 +431,7 @@ class FinancialDocumentManager:
         # Update additional dates
         if 'additional' in updated_config:
             for item in updated_config['additional']:
-                account_info = self.account_dates.get(item['name'])
+                account_info = self.account_dates.get(item['id'])
                 if account_info:
                     item['start_date'] = account_info['start_date']
                     item['end_date'] = account_info['end_date']
@@ -489,20 +501,24 @@ class FinancialDocumentManager:
             if category_key in ['employment', 'bank_uk', 'bank_us']:
                 default_frequency = 'monthly'
                
-            # Get entity name
-            entity_name = item_info.get('name', category_key)
+            # Get entity ID - required field
+            entity_id = item_info.get('id')
+            if not entity_id:
+                self.logger.warning(f"Missing entity ID for pattern {pattern}, skipping")
+                return
                 
             # Create the pattern dictionary with all metadata
             pattern_dict = {
                 'pattern': full_pattern,
-                'name': entity_name,
+                'id': entity_id,
+                'name': item_info.get('name', ''),  # Name is now secondary info
                 'frequency': item_info.get('frequency', default_frequency),
                 'start_date': pattern.get('start_date', item_info.get('start_date')) if isinstance(pattern, dict) else item_info.get('start_date'),
                 'end_date': pattern.get('end_date', item_info.get('end_date')) if isinstance(pattern, dict) else item_info.get('end_date')
             }
             
             # Get URL from entity if available, otherwise from config
-            entity_url = self.get_entity_url(entity_name)
+            entity_url = self.get_entity_url(entity_id)
             if entity_url:
                 pattern_dict['url'] = entity_url
             elif 'url' in item_info:
@@ -519,7 +535,7 @@ class FinancialDocumentManager:
                     if 'pattern' in employer:
                         patterns['employment'].append({
                             'pattern': employer['pattern'],
-                            'name': employer['name'],
+                            'id': employer['id'],
                             'frequency': employer.get('frequency', 'monthly'),
                             'start_date': employer.get('start_date'),
                             'end_date': employer.get('end_date'),
@@ -553,7 +569,7 @@ class FinancialDocumentManager:
                             # Handle string patterns directly
                             patterns[f'investment_{region}'].append({
                                 'pattern': account,
-                                'name': f'investment_{region}',
+                                'id': f'investment_{region}',
                                 'frequency': 'yearly',
                                 'url': None
                             })
@@ -572,7 +588,7 @@ class FinancialDocumentManager:
                             # Handle string patterns directly
                             patterns[f'bank_{region}'].append({
                                 'pattern': bank,
-                                'name': f'bank_{region}',
+                                'id': f'bank_{region}',
                                 'frequency': 'monthly',
                                 'url': None
                             })
@@ -581,9 +597,15 @@ class FinancialDocumentManager:
                             account_types = bank.get('account_types')
                             if account_types is not None:
                                 for account_type in account_types:
+                                    # Check for missing ID and raise error
+                                    if 'id' not in account_type:
+                                        self.logger.error(f"Error: Missing ID in account_type for bank {bank['id']}")
+                                        continue
+                                    
                                     if 'patterns' in account_type:
                                         # Combine bank and account_type info
                                         combined_info = {
+                                            'id': account_type['id'],
                                             'name': f"{bank['name']} - {account_type['name']}",
                                             'frequency': account_type.get('frequency', bank.get('frequency', 'monthly')),
                                             'start_date': account_type.get('start_date', bank.get('start_date')),
@@ -605,14 +627,29 @@ class FinancialDocumentManager:
                 for name, pattern_info in patterns_dict.items():
                     if isinstance(pattern_info, dict):
                         pattern_info['name'] = name
-                        process_pattern(pattern_info, pattern_info, 'additional')
+                        if 'id' not in pattern_info:
+                            pattern_info['id'] = name.replace('_', '-')
+                        
+                        if 'base' in pattern_info:
+                            # Create a pattern with the base
+                            full_pattern = self.build_pattern(pattern_info['base'])
+                            pattern_dict = {
+                                'pattern': full_pattern,
+                                'id': pattern_info['id'],
+                                'name': pattern_info.get('name', ''),
+                                'frequency': pattern_info.get('frequency', 'yearly')
+                            }
+                            patterns['additional'].append(pattern_dict)
+                        else:
+                            # Use the pattern info directly
+                            process_pattern(pattern_info, pattern_info, 'additional')
             elif isinstance(self.config['additional'], list):
                 for item in self.config['additional']:
                     if isinstance(item, str):
                         # Handle string patterns directly
                         patterns['additional'].append({
                             'pattern': item,
-                            'name': 'additional',
+                            'id': 'additional',
                             'frequency': 'yearly',
                             'url': None
                         })
@@ -786,7 +823,7 @@ class FinancialDocumentManager:
                 self.logger.info(f"\n{category.upper()}:")
                 for pattern_info in patterns:
                     pattern = pattern_info['pattern']
-                    name = pattern_info['name']
+                    entity_id = pattern_info['id']
                     frequency = pattern_info.get('frequency', 'yearly')
                     url = pattern_info.get('url')  # Get URL if available
                     
@@ -800,7 +837,7 @@ class FinancialDocumentManager:
                         
                         # Skip if completely outside date range
                         if end_date < calendar_year_start or start_date > calendar_year_end:
-                            self.logger.info(f"⏭️ Skipping {name} ({frequency}) - not active in {year} (active from {start_date.year} to {end_date.year})")
+                            self.logger.info(f"⏭️ Skipping {entity_id} ({frequency}) - not active in {year} (active from {start_date.year} to {end_date.year})")
                             continue
                     except (ValueError, TypeError):
                         if self.verbose:
@@ -814,7 +851,7 @@ class FinancialDocumentManager:
                         results[category].extend(matches)
                         results['found_files'].extend(matches)
                     else:
-                        self.logger.warning(f"✗ No files found for {name} ({frequency})")
+                        self.logger.warning(f"✗ No files found for {entity_id} ({frequency})")
                         self.logger.warning(f"  Pattern used: {pattern}")
                         if url:
                             self.logger.info(f"  Document can be found at: {url}")
@@ -830,7 +867,7 @@ class FinancialDocumentManager:
                             # Generate dummy filename based on frequency
                             if frequency in ['yearly', 'annual', 'once']:
                                 # For yearly files, just use the year without month and day
-                                dummy_filename = f"{year}_{name.lower().replace(' ', '_')}.pdf"
+                                dummy_filename = f"{year}-MM-DD_{entity_id}.pdf"
                                 
                                 # Create an entry for each target directory
                                 for target_dir in target_dirs:
@@ -842,7 +879,7 @@ class FinancialDocumentManager:
                                         
                                     missing_info = {
                                         'path': str(full_path),
-                                        'name': name,
+                                        'name': entity_id,
                                         'frequency': frequency,
                                         'category': category,
                                         'url': url
@@ -853,7 +890,7 @@ class FinancialDocumentManager:
                             elif frequency == 'monthly':
                                 # For monthly files, include month but omit day
                                 for month in range(1, 13):
-                                    dummy_filename = f"{year}-{month:02d}_{name.lower().replace(' ', '_')}.pdf"
+                                    dummy_filename = f"{year}-{month:02d}-DD_{entity_id}.pdf"
                                     
                                     # Create an entry for each target directory
                                     for target_dir in target_dirs:
@@ -865,7 +902,7 @@ class FinancialDocumentManager:
                                             
                                         missing_info = {
                                             'path': str(full_path),
-                                            'name': name,
+                                            'name': entity_id,
                                             'frequency': frequency,
                                             'category': category,
                                             'url': url
@@ -876,7 +913,7 @@ class FinancialDocumentManager:
                             elif frequency == 'quarterly':
                                 # For quarterly files, use Q1, Q2, Q3, Q4
                                 for quarter in range(1, 5):
-                                    dummy_filename = f"{year}-Q{quarter}_{name.lower().replace(' ', '_')}.pdf"
+                                    dummy_filename = f"{year}-Q{quarter}-DD_{entity_id}.pdf"
                                     
                                     # Create an entry for each target directory
                                     for target_dir in target_dirs:
@@ -888,7 +925,7 @@ class FinancialDocumentManager:
                                             
                                         missing_info = {
                                             'path': str(full_path),
-                                            'name': name,
+                                            'name': entity_id,
                                             'frequency': frequency,
                                             'category': category,
                                             'url': url
@@ -905,9 +942,9 @@ class FinancialDocumentManager:
                     
                     if found_count > 0:
                         if is_valid:
-                            self.logger.info(f"✓ Found {found_count} files for {name} ({frequency})")
+                            self.logger.info(f"✓ Found {found_count} files for {entity_id} ({frequency})")
                         else:
-                            self.logger.warning(f"✗ Found {found_count} files for {name} ({frequency}), expected {expected_count}")
+                            self.logger.warning(f"✗ Found {found_count} files for {entity_id} ({frequency}), expected {expected_count}")
                             if url:
                                 self.logger.info(f"  Document can be found at: {url}")
                         
@@ -928,7 +965,7 @@ class FinancialDocumentManager:
                                     # Generate filenames for missing months
                                     for month in range(1, 13):
                                         if month not in found_months:
-                                            dummy_filename = f"{year}-{month:02d}_{name.lower().replace(' ', '_')}.pdf"
+                                            dummy_filename = f"{year}-{month:02d}-DD_{entity_id}.pdf"
                                             
                                             # Create an entry for each target directory
                                             for target_dir in target_dirs:
@@ -940,7 +977,7 @@ class FinancialDocumentManager:
                                                     
                                                 missing_info = {
                                                     'path': str(full_path),
-                                                    'name': name,
+                                                    'name': entity_id,
                                                     'frequency': frequency,
                                                     'category': category,
                                                     'url': url
@@ -962,7 +999,7 @@ class FinancialDocumentManager:
                                     # Generate filenames for missing quarters
                                     for quarter in range(1, 5):
                                         if quarter not in found_quarters:
-                                            dummy_filename = f"{year}-Q{quarter}_{name.lower().replace(' ', '_')}.pdf"
+                                            dummy_filename = f"{year}-Q{quarter}-DD_{entity_id}.pdf"
                                             
                                             # Create an entry for each target directory
                                             for target_dir in target_dirs:
@@ -974,7 +1011,7 @@ class FinancialDocumentManager:
                                                     
                                                 missing_info = {
                                                     'path': str(full_path),
-                                                    'name': name,
+                                                    'name': entity_id,
                                                     'frequency': frequency,
                                                     'category': category,
                                                     'url': url
@@ -1050,11 +1087,11 @@ class FinancialDocumentManager:
         
         return None
 
-    def get_entity_url(self, entity_name):
-        """Get the URL for an entity by name."""
+    def get_entity_url(self, entity_id):
+        """Get the URL for an entity by ID."""
         # Try to find entity in loaded entities
         if self.entity_manager:
-            entity = next((e for e in self.entities if e.name == entity_name), None)
+            entity = self.entity_manager.get_entity_by_id(entity_id)
             if entity and entity.url:
                 return entity.url
                 
@@ -1062,7 +1099,7 @@ class FinancialDocumentManager:
         # Check in employment
         if 'employment' in self.config:
             for employer in self.config['employment']:
-                if isinstance(employer, dict) and employer.get('name') == entity_name and 'url' in employer:
+                if isinstance(employer, dict) and employer.get('id') == entity_id and 'url' in employer:
                     return employer['url']
                     
         # Check in investment
@@ -1070,7 +1107,7 @@ class FinancialDocumentManager:
             for region in ['uk', 'us']:
                 if region in self.config['investment']:
                     for item in self.config['investment'][region]:
-                        if isinstance(item, dict) and item.get('name') == entity_name and 'url' in item:
+                        if isinstance(item, dict) and item.get('id') == entity_id and 'url' in item:
                             return item['url']
                             
         # Check in bank
@@ -1078,7 +1115,7 @@ class FinancialDocumentManager:
             for region in ['uk', 'us']:
                 if region in self.config['bank']:
                     for item in self.config['bank'][region]:
-                        if isinstance(item, dict) and item.get('name') == entity_name and 'url' in item:
+                        if isinstance(item, dict) and item.get('id') == entity_id and 'url' in item:
                             return item['url']
                             
         return None
