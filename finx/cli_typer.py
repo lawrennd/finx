@@ -400,10 +400,17 @@ def savings(
 @entities_app.command("list")
 def entities_list(
     type: Optional[str] = typer.Option(None, "--type", "-t", help="Filter entities by type"),
-    format: OutputFormat = typer.Option(OutputFormat.text, help="Output format (text, json, csv)")
+    format: OutputFormat = typer.Option(OutputFormat.text, help="Output format (text, json, csv)"),
+    entities_file: Optional[str] = typer.Option(None, help="Path to entities file (default: finx_entities.yml in current directory)")
 ):
     """List all entities, optionally filtered by type."""
-    manager = EntityManager(os.getcwd())
+    # Use the specified file or default to finx_entities.yml in the current directory
+    if entities_file:
+        yaml_path = Path(entities_file)
+    else:
+        yaml_path = Path(os.getcwd()) / "finx_entities.yml"
+    
+    manager = EntityManager(yaml_path)
     entities = manager.list_entities(type)
     
     if not entities:
@@ -412,17 +419,17 @@ def entities_list(
     
     # Handle different output formats
     if format == OutputFormat.json:
-        typer.echo(json.dumps(entities, indent=2))
+        typer.echo(json.dumps([entity.to_dict() for entity in entities], indent=2))
     elif format == OutputFormat.csv:
         if entities:
             # Convert nested structures to flat format for CSV
             flat_entities = []
             for entity in entities:
                 flat_entity = {
-                    'name': entity.get('name', ''),
-                    'type': entity.get('type', ''),
-                    'contact_email': entity.get('contact', {}).get('email', ''),
-                    'contact_primary': entity.get('contact', {}).get('primary', '')
+                    'name': entity.name,
+                    'type': entity.type.value,
+                    'contact_email': entity.contact.get('email', ''),
+                    'contact_primary': entity.contact.get('primary', '')
                 }
                 flat_entities.append(flat_entity)
                 
@@ -441,10 +448,17 @@ def entities_list(
 
 @entities_app.command("check")
 def entities_check(
-    format: OutputFormat = typer.Option(OutputFormat.text, help="Output format (text, json, csv)")
+    format: OutputFormat = typer.Option(OutputFormat.text, help="Output format (text, json, csv)"),
+    entities_file: Optional[str] = typer.Option(None, help="Path to entities file (default: finx_entities.yml in current directory)")
 ):
     """Check for entities mentioned in config files but not in entities list."""
-    manager = EntityManager(os.getcwd())
+    # Use the specified file or default to finx_entities.yml in the current directory
+    if entities_file:
+        yaml_path = Path(entities_file)
+    else:
+        yaml_path = Path(os.getcwd()) / "finx_entities.yml"
+    
+    manager = EntityManager(yaml_path)
     
     # Load base and private configs
     config_names = []

@@ -1,12 +1,14 @@
-import pytest
 import os
-import tempfile
-import yaml
-from unittest.mock import patch, MagicMock
-from pathlib import Path
-import subprocess
-import json
 import sys
+import json
+import pytest
+import tempfile
+import shutil
+from unittest.mock import patch, MagicMock
+import subprocess
+from pathlib import Path
+import yaml
+from finx.entities import Entity, EntityType
 
 # This file tests CLI functionality regardless of implementation
 # It should work with both argparse and Typer
@@ -275,14 +277,14 @@ class TestCLIFunctionality:
         """Test that the entities list command supports different output formats."""
         from finx.cli_typer import main
         
-        # Test data
-        test_entities = [
-            {
-                'name': 'Test Entity',
-                'type': 'bank',
-                'contact': {'email': 'test@example.com', 'primary': 'John Doe'}
-            }
-        ]
+        # Test data - create Entity objects instead of dictionaries
+        test_entity = Entity(
+            name='Test Entity',
+            type=EntityType.BANK,
+            contact={'email': 'test@example.com', 'primary': 'John Doe'},
+            url='https://example.com'
+        )
+        test_entities = [test_entity]
         
         # Test for JSON format
         with patch('finx.cli_typer.EntityManager') as mock_manager_class:
@@ -300,7 +302,17 @@ class TestCLIFunctionality:
             
             # Verify expected behavior
             mock_manager.list_entities.assert_called_once()
-            mock_json_dumps.assert_called_once_with(test_entities, indent=2)
+            # Verify that to_dict was called on the entity to convert it to JSON-serializable format
+            mock_json_dumps.assert_called_once()
+            # Extract the first argument of the first positional argument
+            # It should be a list of dictionaries converted from Entity objects
+            first_arg = mock_json_dumps.call_args[0][0]
+            assert isinstance(first_arg, list)
+            assert len(first_arg) == 1
+            # Entity is converted to dict before JSON serialization
+            assert isinstance(first_arg[0], dict)
+            assert 'name' in first_arg[0]
+            assert first_arg[0]['name'] == 'Test Entity'
         
         # Test for CSV format
         with patch('finx.cli_typer.EntityManager') as mock_manager_class:

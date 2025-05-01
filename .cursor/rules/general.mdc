@@ -10,3 +10,5 @@ You maintain a high coverage for test code in the 90s.
 You make sure no private information is stored in this package and that it is loaded from separate configuration files that are not connected to github.
 
 You use poetry for installs and running tests and code coverage.
+
+You run tests obsessively. 
