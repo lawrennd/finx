@@ -170,6 +170,7 @@ def tax_status_command(args):
         config_file=args.config_file,
         private_config_file=args.private_config_file,
         directory_mapping_file=args.directory_mapping_file,
+        entities_file=args.entities_file,
         verbose=args.verbose
     )
     
@@ -205,6 +206,7 @@ def tax_missing_command(args):
         config_file=args.config_file,
         private_config_file=args.private_config_file,
         directory_mapping_file=args.directory_mapping_file,
+        entities_file=args.entities_file,
         verbose=args.verbose
     )
     
@@ -280,6 +282,7 @@ def tax_update_dates_command(args):
         config_file=args.config_file,
         private_config_file=args.private_config_file,
         directory_mapping_file=args.directory_mapping_file,
+        entities_file=args.entities_file,
         verbose=args.verbose
     )
     
@@ -333,6 +336,7 @@ def setup_tax_parser(subparsers):
     tax_common_parser.add_argument('--config-file', type=str, help='Path to base configuration file')
     tax_common_parser.add_argument('--private-config-file', type=str, help='Path to private configuration file')
     tax_common_parser.add_argument('--directory-mapping-file', type=str, help='Path to directory mapping file')
+    tax_common_parser.add_argument('--entities-file', type=str, help='Path to entities file')
     
     # Tax status command
     status_parser = tax_subparsers.add_parser('status', parents=[tax_common_parser], help='Check tax document status')
@@ -480,22 +484,28 @@ def check():
     """Check for entities mentioned in config files but not in entities list."""
     manager = EntityManager(os.getcwd())
     
-    # Load base and dummy configs
-    base_config = {}
-    dummy_config = {}
+    # Load base and private configs
+    config_names = []
     
+    # Try to find potential entity names in config files
     base_path = Path(os.getcwd()) / "finx_base.yml"
-    dummy_path = Path(os.getcwd()) / "finx_dummy.yml"
+    private_path = Path(os.getcwd()) / "finx_private.yml"
     
     if base_path.exists():
         with open(base_path, 'r') as f:
             base_config = yaml.safe_load(f)
+            config_names.extend(extract_entity_names(base_config))
     
-    if dummy_path.exists():
-        with open(dummy_path, 'r') as f:
-            dummy_config = yaml.safe_load(f)
+    if private_path.exists():
+        with open(private_path, 'r') as f:
+            private_config = yaml.safe_load(f)
+            config_names.extend(extract_entity_names(private_config))
     
-    missing = manager.check_missing_entities(base_config, dummy_config)
+    # Deduplicate names
+    config_names = list(set(config_names))
+    
+    # Check for missing entities
+    missing = manager.check_missing_entities(config_names)
     
     if missing:
         click.echo("The following entities are mentioned in config files but not in the entities list:")
@@ -503,6 +513,40 @@ def check():
             click.echo(f"  - {name}")
     else:
         click.echo("All entities mentioned in config files are listed in the entities database.")
+
+def extract_entity_names(config):
+    """Extract potential entity names from a configuration dictionary."""
+    entity_names = []
+    
+    # Extract from employment
+    if 'employment' in config:
+        for employer in config['employment']:
+            if isinstance(employer, dict) and 'name' in employer:
+                entity_names.append(employer['name'])
+            elif isinstance(employer, str):
+                entity_names.append(employer)
+    
+    # Extract from investment
+    if 'investment' in config:
+        for region in ['uk', 'us']:
+            if region in config['investment']:
+                for item in config['investment'][region]:
+                    if isinstance(item, dict) and 'name' in item:
+                        entity_names.append(item['name'])
+                    elif isinstance(item, str):
+                        entity_names.append(item)
+    
+    # Extract from bank
+    if 'bank' in config:
+        for region in ['uk', 'us']:
+            if region in config['bank']:
+                for item in config['bank'][region]:
+                    if isinstance(item, dict) and 'name' in item:
+                        entity_names.append(item['name'])
+                    elif isinstance(item, str):
+                        entity_names.append(item)
+    
+    return entity_names
 
 if __name__ == "__main__":
     sys.exit(main()) 

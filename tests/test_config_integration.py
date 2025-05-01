@@ -290,37 +290,37 @@ class TestConfigIntegration:
                         "name": "Example Current Employer",
                         "type": "employer",
                         "url": "https://example-employer.com",
-                        "contact_email": "hr@example-employer.com"
+                        "contact": {"email": "hr@example-employer.com"}
                     },
                     {
                         "name": "Another Current Employer",
                         "type": "employer",
                         "url": "https://another-employer.com",
-                        "contact_email": "hr@another-employer.com"
+                        "contact": {"email": "hr@another-employer.com"}
                     },
                     {
                         "name": "Example Investment Platform",
                         "type": "investment",
                         "url": "https://example-investment.com",
-                        "contact_email": "support@example-investment.com"
+                        "contact": {"email": "support@example-investment.com"}
                     },
                     {
                         "name": "Another Investment Platform",
                         "type": "investment",
                         "url": "https://another-investment.com",
-                        "contact_email": "support@another-investment.com"
+                        "contact": {"email": "support@another-investment.com"}
                     },
                     {
                         "name": "Example Bank",
                         "type": "bank",
                         "url": "https://example-bank.com",
-                        "contact_email": "support@example-bank.com"
+                        "contact": {"email": "support@example-bank.com"}
                     },
                     {
                         "name": "Another Bank",
                         "type": "bank",
                         "url": "https://another-bank.com",
-                        "contact_email": "support@another-bank.com"
+                        "contact": {"email": "support@another-bank.com"}
                     }
                 ]
             }
@@ -329,15 +329,81 @@ class TestConfigIntegration:
             with open(entities_file, "w") as f:
                 yaml.dump(test_entities, f)
 
+            # Create test config file
+            config_file = os.path.join(tmpdirname, "test_config.yml")
+            config_content = {
+                "employment": {
+                    "patterns": {
+                        "payslip": {"frequency": "monthly"},
+                        "p60": {"frequency": "yearly"},
+                        "p45": {"frequency": "once"}
+                    },
+                    "current": [
+                        {
+                            "name": "EXAMPLE_CURRENT_EMPLOYER",
+                            "frequency": "monthly",
+                            "patterns": ["example-current-employer"],
+                            "start_date": "2020-01-01"
+                        },
+                        {
+                            "name": "ANOTHER_CURRENT_EMPLOYER",
+                            "frequency": "monthly",
+                            "patterns": ["another-current-employer"],
+                            "start_date": "2021-01-01"
+                        }
+                    ]
+                },
+                "investment": {
+                    "uk": [
+                        {"name": "EXAMPLE_UK_INVESTMENT", "patterns": ["example-uk-investment"]},
+                        {"name": "ANOTHER_UK_INVESTMENT", "patterns": ["another-uk-investment"]}
+                    ],
+                    "us": [
+                        {"name": "EXAMPLE_US_INVESTMENT", "patterns": ["example-us-investment"]},
+                        {"name": "ANOTHER_US_INVESTMENT", "patterns": ["another-us-investment"]}
+                    ]
+                },
+                "bank": {
+                    "uk": [
+                        {
+                            "name": "EXAMPLE_UK_BANK",
+                            "account_types": [
+                                {
+                                    "name": "Joint Account",
+                                    "patterns": [{"base": "example-uk-bank", "account_type": "joint"}]
+                                },
+                                {
+                                    "name": "Savings",
+                                    "patterns": [{"base": "example-uk-bank", "account_type": "savings"}]
+                                }
+                            ]
+                        },
+                        {
+                            "name": "ANOTHER_UK_BANK",
+                            "patterns": ["another-uk-bank"]
+                        }
+                    ],
+                    "us": []
+                },
+                "additional": [
+                    {"name": "EXAMPLE_TAX_RETURN", "patterns": ["example-tax-return"]},
+                    {"name": "EXAMPLE_E_FILE", "patterns": ["EXAMPLE-E-FILE"]},
+                    {"name": "EXAMPLE_FEDERAL_TAX", "patterns": ["EXAMPLE_Federal"]},
+                    {"name": "EXAMPLE_FINCEN", "patterns": ["EXAMPLE_FinCEN"]}
+                ]
+            }
+            with open(config_file, "w") as f:
+                yaml.dump(config_content, f)
+
             # Create directory mapping file
             directory_mapping = {
                 "directory_mapping": {
-                    "employment": os.path.join(tmpdirname, "employment"),
-                    "bank_uk": os.path.join(tmpdirname, "banking", "uk"),
-                    "bank_us": os.path.join(tmpdirname, "banking", "us"),
-                    "investment_uk": os.path.join(tmpdirname, "investments", "uk"),
-                    "investment_us": os.path.join(tmpdirname, "investments", "us"),
-                    "additional": os.path.join(tmpdirname, "tax", "us")
+                    "employment": ["employment"],
+                    "bank_uk": ["banking/uk"],
+                    "bank_us": ["banking/us"],
+                    "investment_uk": ["investments/uk"],
+                    "investment_us": ["investments/us"],
+                    "additional": ["tax/us"]
                 }
             }
             
@@ -347,7 +413,7 @@ class TestConfigIntegration:
 
             # Use the TaxDocumentChecker to find the files
             checker = TaxDocumentChecker(
-                config_file=os.path.join("configs", "example_config.yml"),
+                config_file=config_file,
                 base_path=tmpdirname,
                 entities_file=entities_file,
                 directory_mapping_file=directory_mapping_file
@@ -360,6 +426,14 @@ class TestConfigIntegration:
             
             available_years = checker.list_available_years()
             assert "2023" in available_years, "2023 should be found as an available year"
+            
+            # Test finding files for employment patterns
+            for pattern_info in checker.required_patterns['employment']:
+                pattern = pattern_info['pattern']
+                matches = checker.find_files_matching_pattern(pattern, year='2023', category='employment')
+                # We should find some files for at least some patterns
+                if "example-current-employer" in pattern or "another-current-employer" in pattern:
+                    assert len(matches) > 0, f"Should find files for pattern: {pattern}"
     
     def test_check_year_with_test_files(self):
         """Test the check_year functionality with test files."""

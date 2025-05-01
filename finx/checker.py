@@ -9,6 +9,8 @@ from pathlib import Path
 from collections import defaultdict
 from typing import Optional
 
+from finx.entities import EntityManager
+
 # Configure logging
 def setup_logging(log_level=logging.INFO):
     """Set up logging configuration."""
@@ -49,7 +51,7 @@ FREQUENCY_EXPECTATIONS = {
 }
 
 class TaxDocumentChecker:
-    def __init__(self, base_path=None, tax_year_path=None, config_file=None, private_config_file=None, directory_mapping_file=None, verbose=False, config=None):
+    def __init__(self, base_path=None, tax_year_path=None, config_file=None, private_config_file=None, directory_mapping_file=None, entities_file=None, verbose=False, config=None):
         """Initialize the tax document checker.
         
         Args:
@@ -58,6 +60,7 @@ class TaxDocumentChecker:
             config_file: Path to the base configuration file
             private_config_file: Path to the private configuration file
             directory_mapping_file: Path to the directory mapping configuration file
+            entities_file: Path to the entities configuration file
             verbose: Whether to print verbose output
             config: Optional direct configuration dictionary to use instead of loading from files
         """
@@ -117,6 +120,7 @@ class TaxDocumentChecker:
             self.config_file = find_config_file('finx_base.yml', config_file)
             self.private_config_file = find_config_file('finx_private.yml', private_config_file)
             self.directory_mapping_file = find_config_file('directory_mapping.yml', directory_mapping_file)
+            self.entities_file = find_config_file('finx_entities.yml', entities_file)
             
             if self.verbose:
                 self.logger.info("\nLoading configurations...")
@@ -126,6 +130,16 @@ class TaxDocumentChecker:
             self.directory_mapping = self.load_directory_mapping()
             self.config = self.merge_configs()
         
+        # Initialize entity manager
+        if entities_file or not config:
+            self.entity_manager = EntityManager(self.entities_file)
+            if self.verbose:
+                self.logger.info("\nLoading entities...")
+            self.entities = self.entity_manager.load_entities()
+        else:
+            self.entity_manager = None
+            self.entities = []
+            
         # Initialize account_dates before flattening config
         self.account_dates = {}
         
@@ -458,16 +472,25 @@ class TaxDocumentChecker:
             default_frequency = 'yearly'  # Default for most categories
             if category_key in ['employment', 'bank_uk', 'bank_us']:
                 default_frequency = 'monthly'
+               
+            # Get entity name
+            entity_name = item_info.get('name', category_key)
                 
             # Create the pattern dictionary with all metadata
             pattern_dict = {
                 'pattern': full_pattern,
-                'name': item_info.get('name', category_key),
+                'name': entity_name,
                 'frequency': item_info.get('frequency', default_frequency),
                 'start_date': pattern.get('start_date', item_info.get('start_date')) if isinstance(pattern, dict) else item_info.get('start_date'),
-                'end_date': pattern.get('end_date', item_info.get('end_date')) if isinstance(pattern, dict) else item_info.get('end_date'),
-                'url': item_info.get('url')
+                'end_date': pattern.get('end_date', item_info.get('end_date')) if isinstance(pattern, dict) else item_info.get('end_date')
             }
+            
+            # Get URL from entity if available, otherwise from config
+            entity_url = self.get_entity_url(entity_name)
+            if entity_url:
+                pattern_dict['url'] = entity_url
+            elif 'url' in item_info:
+                pattern_dict['url'] = item_info.get('url')
             
             patterns[category_key].append(pattern_dict)
 
@@ -1004,6 +1027,39 @@ class TaxDocumentChecker:
                 if code_file.exists():
                     return code_file
         
+        return None
+
+    def get_entity_url(self, entity_name):
+        """Get the URL for an entity by name."""
+        # Try to find entity in loaded entities
+        if self.entity_manager:
+            entity = next((e for e in self.entities if e.name == entity_name), None)
+            if entity and entity.url:
+                return entity.url
+                
+        # Fall back to config if entity not found or no entity manager
+        # Check in employment
+        if 'employment' in self.config:
+            for employer in self.config['employment']:
+                if isinstance(employer, dict) and employer.get('name') == entity_name and 'url' in employer:
+                    return employer['url']
+                    
+        # Check in investment
+        if 'investment' in self.config:
+            for region in ['uk', 'us']:
+                if region in self.config['investment']:
+                    for item in self.config['investment'][region]:
+                        if isinstance(item, dict) and item.get('name') == entity_name and 'url' in item:
+                            return item['url']
+                            
+        # Check in bank
+        if 'bank' in self.config:
+            for region in ['uk', 'us']:
+                if region in self.config['bank']:
+                    for item in self.config['bank'][region]:
+                        if isinstance(item, dict) and item.get('name') == entity_name and 'url' in item:
+                            return item['url']
+                            
         return None
 
 def main():
