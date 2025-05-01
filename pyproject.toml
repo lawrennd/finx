@@ -41,6 +41,9 @@ finx = "finx.cli:main"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-v"
+markers = [
+    "integration: marks tests that perform integration testing with real files and system calls"
+]
 
 [tool.black]
 line-length = 100
