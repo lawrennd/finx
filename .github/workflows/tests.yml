@@ -41,6 +41,12 @@ jobs:
         poetry lock --no-update
         poetry install --no-interaction --with dev
     
-    - name: Run tests
+    - name: Run tests with coverage
       run: |
-        poetry run pytest tests/ -v 
+        poetry run pytest tests/ -v --cov=finx --cov-report=xml
+    
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        slug: lawrennd/finx 
