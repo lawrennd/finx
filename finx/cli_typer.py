@@ -356,50 +356,51 @@ def invest(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output for debugging")
 ):
     """Investment tracking (planned)."""
-    logger = logging.getLogger('finx')
-    logger.error("Investment tracking functionality is not yet implemented")
-    raise NotImplementedError("Investment tracking functionality is not yet implemented")
+    typer.echo("Investment tracking functionality is planned but not yet implemented.")
+    typer.echo("This feature will be available in a future version.")
+    return 0
 
 @app.command("networth")
 def networth(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output for debugging")
 ):
     """Net worth tracking (planned)."""
-    logger = logging.getLogger('finx')
-    logger.error("Net worth tracking functionality is not yet implemented")
-    raise NotImplementedError("Net worth tracking functionality is not yet implemented")
+    typer.echo("Net worth tracking functionality is planned but not yet implemented.")
+    typer.echo("This feature will be available in a future version.")
+    return 0
 
 @app.command("budget")
 def budget(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output for debugging")
 ):
     """Budget management (planned)."""
-    logger = logging.getLogger('finx')
-    logger.error("Budget management functionality is not yet implemented")
-    raise NotImplementedError("Budget management functionality is not yet implemented")
+    typer.echo("Budget management functionality is planned but not yet implemented.")
+    typer.echo("This feature will be available in a future version.")
+    return 0
 
 @app.command("estate")
 def estate(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output for debugging")
 ):
     """Estate planning (planned)."""
-    logger = logging.getLogger('finx')
-    logger.error("Estate planning functionality is not yet implemented")
-    raise NotImplementedError("Estate planning functionality is not yet implemented")
+    typer.echo("Estate planning functionality is planned but not yet implemented.")
+    typer.echo("This feature will be available in a future version.")
+    return 0
 
 @app.command("savings")
 def savings(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output for debugging")
 ):
     """Savings goals tracking (planned)."""
-    logger = logging.getLogger('finx')
-    logger.error("Savings goals functionality is not yet implemented")
-    raise NotImplementedError("Savings goals functionality is not yet implemented")
+    typer.echo("Savings goals functionality is planned but not yet implemented.")
+    typer.echo("This feature will be available in a future version.")
+    return 0
 
 # Entities commands
 @entities_app.command("list")
 def entities_list(
-    type: Optional[str] = typer.Option(None, "--type", "-t", help="Filter entities by type")
+    type: Optional[str] = typer.Option(None, "--type", "-t", help="Filter entities by type"),
+    format: OutputFormat = typer.Option(OutputFormat.text, help="Output format (text, json, csv)")
 ):
     """List all entities, optionally filtered by type."""
     manager = EntityManager(os.getcwd())
@@ -409,12 +410,39 @@ def entities_list(
         typer.echo("No entities found.")
         return
     
-    for entity in entities:
-        typer.echo("\n" + manager.format_entity(entity))
-        typer.echo("-" * 50)
+    # Handle different output formats
+    if format == OutputFormat.json:
+        typer.echo(json.dumps(entities, indent=2))
+    elif format == OutputFormat.csv:
+        if entities:
+            # Convert nested structures to flat format for CSV
+            flat_entities = []
+            for entity in entities:
+                flat_entity = {
+                    'name': entity.get('name', ''),
+                    'type': entity.get('type', ''),
+                    'contact_email': entity.get('contact', {}).get('email', ''),
+                    'contact_primary': entity.get('contact', {}).get('primary', '')
+                }
+                flat_entities.append(flat_entity)
+                
+            writer = csv.DictWriter(sys.stdout, fieldnames=flat_entities[0].keys())
+            writer.writeheader()
+            writer.writerows(flat_entities)
+        else:
+            # Write empty CSV with default headers
+            writer = csv.DictWriter(sys.stdout, fieldnames=['name', 'type', 'contact_email', 'contact_primary'])
+            writer.writeheader()
+    else:
+        # Text format (default)
+        for entity in entities:
+            typer.echo("\n" + manager.format_entity(entity))
+            typer.echo("-" * 50)
 
 @entities_app.command("check")
-def entities_check():
+def entities_check(
+    format: OutputFormat = typer.Option(OutputFormat.text, help="Output format (text, json, csv)")
+):
     """Check for entities mentioned in config files but not in entities list."""
     manager = EntityManager(os.getcwd())
     
@@ -441,12 +469,30 @@ def entities_check():
     # Check for missing entities
     missing = manager.check_missing_entities(config_names)
     
-    if missing:
-        typer.echo("The following entities are mentioned in config files but not in the entities list:")
-        for name in missing:
-            typer.echo(f"  - {name}")
+    # Format output based on selected format
+    if format == OutputFormat.json:
+        result = {
+            "missing_entities": missing,
+            "total_missing": len(missing)
+        }
+        typer.echo(json.dumps(result, indent=2))
+    elif format == OutputFormat.csv:
+        if missing:
+            writer = csv.writer(sys.stdout)
+            writer.writerow(["entity_name"])
+            for name in missing:
+                writer.writerow([name])
+        else:
+            writer = csv.writer(sys.stdout)
+            writer.writerow(["entity_name"])
     else:
-        typer.echo("All entities mentioned in config files are listed in the entities database.")
+        # Text format (default)
+        if missing:
+            typer.echo("The following entities are mentioned in config files but not in the entities list:")
+            for name in missing:
+                typer.echo(f"  - {name}")
+        else:
+            typer.echo("All entities mentioned in config files are listed in the entities database.")
 
 def extract_entity_names(config):
     """Extract potential entity names from a configuration dictionary."""

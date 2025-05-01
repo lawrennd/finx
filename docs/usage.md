@@ -59,6 +59,8 @@ finx tax missing --format json
 finx tax missing --format csv
 ```
 
+The `--format` option is currently only implemented for the `tax missing` command and supports `text` (default), `json`, and `csv` formats.
+
 #### zip
 
 Create a password-protected zip archive of tax documents.
@@ -70,9 +72,11 @@ finx tax zip
 # Create a zip for a specific tax year
 finx tax zip --year 2023
 
-# Test run without creating the zip
+# Test run without creating the zip (shows what would be included)
 finx tax zip --dummy
 ```
+
+The `--dummy` option performs a dry run that lists all files that would be included in the archive without actually creating the zip file. This is useful for verifying the content before creating the actual archive.
 
 #### update-dates
 
@@ -111,6 +115,12 @@ finx entities list
 
 # List entities of a specific type
 finx entities list --type accountant
+
+# Output in JSON format
+finx entities list --format json
+
+# Output in CSV format
+finx entities list --format csv
 ```
 
 #### check
@@ -120,6 +130,12 @@ Check for missing entity information in configuration files.
 ```bash
 # Check for missing entities
 finx entities check
+
+# Check for missing entities and output in JSON format
+finx entities check --format json
+
+# Check for missing entities and output in CSV format 
+finx entities check --format csv
 ```
 
 ### Entity Types
@@ -139,13 +155,13 @@ The tool supports the following entity types:
 
 | Option | Description |
 |----------|-------------|
-| `--type` | Filter entities by type (e.g., accountant, bank) |
+| `--type`, `-t` | Filter entities by type (e.g., accountant, bank) |
 | `--format` | Output format (choices: text, json, csv, default: text) |
-| `--config-file` | Path to entity configuration file |
+| `--config-file` | Path to entity configuration file (planned) |
 
 ## Investment Tracking (Planned)
 
-The `invest` command will help you track and analyze your investments.
+The `invest` command will help you track and analyze your investments. This feature is currently planned but not yet implemented.
 
 ### Planned Subcommands
 
@@ -179,7 +195,7 @@ finx invest allocation
 
 ## Net Worth Tracking (Planned)
 
-The `networth` command will help you track your overall financial position.
+The `networth` command will help you track your overall financial position. This feature is currently planned but not yet implemented.
 
 ### Planned Subcommands
 
@@ -221,7 +237,7 @@ finx networth add-liability "Mortgage" --value 300000 --type loan
 
 ## Budget Management (Planned)
 
-The `budget` command will help you track income and expenses.
+The `budget` command will help you track income and expenses. This feature is currently planned but not yet implemented.
 
 ### Planned Subcommands
 
@@ -263,7 +279,7 @@ finx budget report --month 2023-05
 
 ## Estate Planning (Planned)
 
-The `estate` command will help you organize documents for wills and estate planning.
+The `estate` command will help you organize documents for wills and estate planning. This feature is currently planned but not yet implemented.
 
 ### Planned Subcommands
 
@@ -285,7 +301,7 @@ finx estate verify
 
 ## Savings Goals (Planned)
 
-The `savings` command will help you track progress towards savings goals.
+The `savings` command will help you track progress towards savings goals. This feature is currently planned but not yet implemented.
 
 ### Planned Subcommands
 
