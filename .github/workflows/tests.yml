@@ -39,7 +39,7 @@ jobs:
       run: |
         poetry config virtualenvs.in-project true
         poetry lock --no-update
-        poetry install --no-interaction --dev
+        poetry install --no-interaction --with dev
     
     - name: Run tests
       run: |
