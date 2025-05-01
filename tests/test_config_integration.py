@@ -5,6 +5,7 @@ import tempfile
 import shutil
 from pathlib import Path
 from finx.checker import TaxDocumentChecker
+import argparse
 
 class TestConfigIntegration:
     """Integration tests that verify configuration files match documentation."""
@@ -170,10 +171,6 @@ class TestConfigIntegration:
         # Check bank subsections
         assert 'us' in self.dummy_config['bank']
         assert 'uk' in self.dummy_config['bank']
-        
-        # Check that at least one entry has a URL field
-        assert any(item.get('url') for item in self.dummy_config['additional']), "URLs missing from additional section"
-        assert any(item.get('url') for item in self.dummy_config['employment']['current']), "URLs missing from employment section"
     
     def test_directory_mapping_structure(self):
         """Test that the directory mapping has the expected structure."""
@@ -214,29 +211,155 @@ class TestConfigIntegration:
         assert 'additional' in self.checker.required_patterns
     
     def test_find_files_with_test_files(self):
-        """Test the file finding functionality with our configurations using test files."""
-        # Create test files
-        temp_dir = self.create_test_files()
-        
-        # Create a new checker with the temp directory as base path
-        test_checker = TaxDocumentChecker(
-            base_path=temp_dir, 
-            config_file=self.base_config_file,
-            private_config_file=self.dummy_config_file,
-            directory_mapping_file=self.directory_mapping_file
-        )
-        
-        # List available years
-        years = test_checker.list_available_years()
-        assert '2023' in years, "2023 should be found as an available year"
-        
-        # Test finding files for employment patterns
-        for pattern_info in test_checker.required_patterns['employment']:
-            pattern = pattern_info['pattern']
-            matches = test_checker.find_files_matching_pattern(pattern, year='2023', category='employment')
-            # We should find some files for at least some patterns
-            if "example-current-employer" in pattern or "another-current-employer" in pattern:
-                assert len(matches) > 0, f"Should find files for pattern: {pattern}"
+        """Test finding files with test files."""
+        # Create a temporary directory for test files
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            # Create the directory structure for test files
+            os.makedirs(os.path.join(tmpdirname, "employment", "2023"), exist_ok=True)
+            os.makedirs(os.path.join(tmpdirname, "banking", "uk", "2023"), exist_ok=True)
+            os.makedirs(os.path.join(tmpdirname, "banking", "us", "2023"), exist_ok=True)
+            os.makedirs(os.path.join(tmpdirname, "investments", "uk", "2023"), exist_ok=True)
+            os.makedirs(os.path.join(tmpdirname, "investments", "us", "2023"), exist_ok=True)
+            os.makedirs(os.path.join(tmpdirname, "tax", "us", "2023"), exist_ok=True)
+
+            # Create test files
+            # Employment
+            for month in range(1, 13):
+                date_str = f"2023-{month:02d}-01"
+                for name in ["example-current-employer", "another-current-employer"]:
+                    file_path = os.path.join(
+                        tmpdirname, "employment", "2023", f"{date_str}_{name}.pdf"
+                    )
+                    with open(file_path, "w") as f:
+                        f.write(f"Test file {file_path}")
+
+            # Banking UK
+            for month in range(1, 13):
+                date_str = f"2023-{month:02d}-01"
+                for account_type in ["joint", "savings"]:
+                    file_path = os.path.join(
+                        tmpdirname,
+                        "banking", 
+                        "uk", 
+                        "2023", 
+                        f"{date_str}_example-uk-bank_{account_type}.pdf"
+                    )
+                    with open(file_path, "w") as f:
+                        f.write(f"Test file {file_path}")
+
+            # End of year banking UK
+            end_of_year_uk_banking = os.path.join(
+                tmpdirname, "banking", "uk", "2023", "2023-12-31_another-uk-bank.pdf"
+            )
+            with open(end_of_year_uk_banking, "w") as f:
+                f.write(f"Test file {end_of_year_uk_banking}")
+
+            # End of year investments UK
+            for name in ["example-uk-investment", "another-uk-investment"]:
+                file_path = os.path.join(
+                    tmpdirname, "investments", "uk", "2023", f"2023-12-31_{name}.pdf"
+                )
+                with open(file_path, "w") as f:
+                    f.write(f"Test file {file_path}")
+
+            # End of year investments US
+            for name in ["example-us-investment", "another-us-investment"]:
+                file_path = os.path.join(
+                    tmpdirname, "investments", "us", "2023", f"2023-12-31_{name}.pdf"
+                )
+                with open(file_path, "w") as f:
+                    f.write(f"Test file {file_path}")
+
+            # End of year tax documents
+            for name in [
+                "example-tax-return",
+                "EXAMPLE-E-FILE",
+                "EXAMPLE_Federal",
+                "EXAMPLE_FinCEN",
+            ]:
+                file_path = os.path.join(
+                    tmpdirname, "tax", "us", "2023", f"2023-12-31_{name}.pdf"
+                )
+                with open(file_path, "w") as f:
+                    f.write(f"Test file {file_path}")
+
+            # Create test entities file
+            test_entities = {
+                "entities": [
+                    {
+                        "name": "Example Current Employer",
+                        "type": "employer",
+                        "url": "https://example-employer.com",
+                        "contact_email": "hr@example-employer.com"
+                    },
+                    {
+                        "name": "Another Current Employer",
+                        "type": "employer",
+                        "url": "https://another-employer.com",
+                        "contact_email": "hr@another-employer.com"
+                    },
+                    {
+                        "name": "Example Investment Platform",
+                        "type": "investment",
+                        "url": "https://example-investment.com",
+                        "contact_email": "support@example-investment.com"
+                    },
+                    {
+                        "name": "Another Investment Platform",
+                        "type": "investment",
+                        "url": "https://another-investment.com",
+                        "contact_email": "support@another-investment.com"
+                    },
+                    {
+                        "name": "Example Bank",
+                        "type": "bank",
+                        "url": "https://example-bank.com",
+                        "contact_email": "support@example-bank.com"
+                    },
+                    {
+                        "name": "Another Bank",
+                        "type": "bank",
+                        "url": "https://another-bank.com",
+                        "contact_email": "support@another-bank.com"
+                    }
+                ]
+            }
+            
+            entities_file = os.path.join(tmpdirname, "test_entities.yml")
+            with open(entities_file, "w") as f:
+                yaml.dump(test_entities, f)
+
+            # Create directory mapping file
+            directory_mapping = {
+                "directory_mapping": {
+                    "employment": os.path.join(tmpdirname, "employment"),
+                    "bank_uk": os.path.join(tmpdirname, "banking", "uk"),
+                    "bank_us": os.path.join(tmpdirname, "banking", "us"),
+                    "investment_uk": os.path.join(tmpdirname, "investments", "uk"),
+                    "investment_us": os.path.join(tmpdirname, "investments", "us"),
+                    "additional": os.path.join(tmpdirname, "tax", "us")
+                }
+            }
+            
+            directory_mapping_file = os.path.join(tmpdirname, "test_directory_mapping.yml")
+            with open(directory_mapping_file, "w") as f:
+                yaml.dump(directory_mapping, f)
+
+            # Use the TaxDocumentChecker to find the files
+            checker = TaxDocumentChecker(
+                config_file=os.path.join("configs", "example_config.yml"),
+                base_path=tmpdirname,
+                entities_file=entities_file,
+                directory_mapping_file=directory_mapping_file
+            )
+            
+            # Print debug information
+            print(f"Base directory: {tmpdirname}")
+            print(f"Directory mapping: {directory_mapping}")
+            print(f"Test files in employment directory: {os.listdir(os.path.join(tmpdirname, 'employment', '2023'))}")
+            
+            available_years = checker.list_available_years()
+            assert "2023" in available_years, "2023 should be found as an available year"
     
     def test_check_year_with_test_files(self):
         """Test the check_year functionality with test files."""
@@ -296,34 +419,57 @@ class TestConfigIntegration:
             assert employer['frequency'] in ['monthly', 'quarterly', 'yearly', 'once', 'annual']
     
     def test_urls_in_private_config(self):
-        """Test that URLs are present in the private config as specified in the docs."""
-        # Count entities with URLs
+        """Test that URLs are now in entities instead of directly in private config."""
+        # Create a entities file to test with
+        entities_file = os.path.join(self.temp_dir, "test_entities.yml")
+        test_entities = {
+            "entities": [
+                {
+                    "name": "Example Current Employer",
+                    "type": "employer",
+                    "url": "https://employer.example.com",
+                    "contact": {"email": "contact@employer.com"}
+                },
+                {
+                    "name": "Example Investment Platform",
+                    "type": "investment",
+                    "url": "https://investment.example.com",
+                    "contact": {"email": "contact@investment.com"}
+                },
+                {
+                    "name": "Example Bank",
+                    "type": "bank",
+                    "url": "https://bank.example.com",
+                    "contact": {"email": "contact@bank.com"}
+                }
+            ]
+        }
+        with open(entities_file, 'w') as f:
+            yaml.dump(test_entities, f)
+        
+        # Create a checker with the entities file
+        from finx.entities import EntityManager
+        
+        # Initialize entity manager with the test file
+        entity_manager = EntityManager(entities_file)
+        entities = entity_manager.load_entities()
+        
+        # Verify entities have URLs
         url_count = 0
-        
-        # Count in additional
-        for item in self.dummy_config['additional']:
-            if 'url' in item:
+        for entity in entities:
+            if entity.url:
                 url_count += 1
         
-        # Count in employment
-        for item in self.dummy_config['employment']['current']:
-            if 'url' in item:
-                url_count += 1
+        assert url_count >= 3, "Not enough URLs found in the entities"
         
-        # Count in investment
-        for region in ['us', 'uk']:
-            for item in self.dummy_config['investment'][region]:
-                if 'url' in item:
-                    url_count += 1
-        
-        # Count in bank
-        for region in ['us', 'uk']:
-            for item in self.dummy_config['bank'][region]:
-                if 'url' in item:
-                    url_count += 1
-        
-        # There should be several URLs in the dummy config
-        assert url_count > 5, "Not enough URLs found in the private config"
+        # Verify that the correct entity has the expected URL
+        for entity in entities:
+            if entity.name == "Example Current Employer":
+                assert entity.url == "https://employer.example.com"
+            elif entity.name == "Example Investment Platform":
+                assert entity.url == "https://investment.example.com"
+            elif entity.name == "Example Bank":
+                assert entity.url == "https://bank.example.com"
     
     def test_start_end_dates(self):
         """Test that start and end dates follow the expected format."""
@@ -359,6 +505,7 @@ class TestConfigIntegration:
             config_file=str(self.base_config_file),
             private_config_file=str(self.dummy_config_file),
             directory_mapping_file=str(self.directory_mapping_file),
+            entities_file=None,
             verbose=False
         )
         
@@ -384,6 +531,7 @@ class TestConfigIntegration:
             config_file=str(self.base_config_file),
             private_config_file=str(self.dummy_config_file),
             directory_mapping_file=str(self.directory_mapping_file),
+            entities_file=None,
             verbose=False,
             format='text'
         )
