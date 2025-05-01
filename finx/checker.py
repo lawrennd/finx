@@ -364,14 +364,30 @@ class TaxDocumentChecker:
         # Create a deep copy of the private config to modify
         updated_config = yaml.safe_load(yaml.dump(self.private_config))
         
-        # Update employment dates
-        for category in ['current', 'previous', 'generic']:
-            if category in updated_config.get('employment', {}):
-                for employer in updated_config['employment'][category]:
+        # Update employment dates - handle as a flat list instead of categories
+        if 'employment' in updated_config:
+            if isinstance(updated_config['employment'], list):
+                # Already in the flat structure
+                for employer in updated_config['employment']:
                     account_info = self.account_dates.get(employer['name'])
                     if account_info:
                         employer['start_date'] = account_info['start_date']
                         employer['end_date'] = account_info['end_date']
+            else:
+                # Convert the categorical structure to a flat list
+                flat_employment = []
+                for category in ['current', 'previous', 'generic']:
+                    if category in updated_config['employment']:
+                        for employer in updated_config['employment'][category]:
+                            # Update dates if available
+                            account_info = self.account_dates.get(employer['name'])
+                            if account_info:
+                                employer['start_date'] = account_info['start_date']
+                                employer['end_date'] = account_info['end_date']
+                            flat_employment.append(employer)
+                
+                # Replace the categorical structure with the flat list
+                updated_config['employment'] = flat_employment
         
         # Update investment dates
         for region in ['us', 'uk']:
@@ -498,7 +514,7 @@ class TaxDocumentChecker:
         if 'employment' in self.config:
             self.logger.info("Processing employment patterns...")
             if isinstance(self.config['employment'], list):
-                # Direct list of employment records
+                # Direct list of employment records (flat structure)
                 for employer in self.config['employment']:
                     if 'pattern' in employer:
                         patterns['employment'].append({
@@ -513,10 +529,15 @@ class TaxDocumentChecker:
                         for pattern in employer['patterns']:
                             process_pattern(pattern, employer, 'employment')
             else:
-                # Dictionary format with categories
+                # Legacy dictionary format with categories - flatten into a unified list
+                self.logger.info("Converting categorized employment to flat structure")
                 for category in self.config['employment']:
                     self.logger.info(f"Processing employment category: {category}")
-                    for employer in self.config['employment'][category]:
+                    employers = self.config['employment'][category]
+                    if not isinstance(employers, list):
+                        employers = [employers]
+                        
+                    for employer in employers:
                         if 'patterns' in employer and employer['patterns']:
                             for pattern in employer['patterns']:
                                 process_pattern(pattern, employer, 'employment')
@@ -1061,6 +1082,52 @@ class TaxDocumentChecker:
                             return item['url']
                             
         return None
+
+    def get_entity_status(self, start_date=None, end_date=None):
+        """
+        Determine the status of an entity based on its start and end dates.
+        
+        Args:
+            start_date: Optional string in format 'YYYY-MM-DD'
+            end_date: Optional string in format 'YYYY-MM-DD'
+            
+        Returns:
+            str: 'current', 'previous', or 'inactive'
+        """
+        today = datetime.now().date()
+        
+        # Parse dates if provided
+        parsed_start = None
+        parsed_end = None
+        
+        if start_date:
+            try:
+                parsed_start = datetime.strptime(start_date, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                self.logger.warning(f"Invalid start date format: {start_date}")
+        
+        if end_date:
+            try:
+                parsed_end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                self.logger.warning(f"Invalid end date format: {end_date}")
+        
+        # Determine status based on dates
+        if parsed_start and not parsed_end:
+            # Has start date but no end date = current
+            return 'current'
+        elif parsed_start and parsed_end:
+            # Has both start and end dates
+            if parsed_end < today:
+                # End date is in the past = previous
+                return 'previous'
+            else:
+                # End date is in the future = still active but ending
+                return 'current'
+        else:
+            # No dates or only end date without start date
+            # Default to inactive
+            return 'inactive'
 
 def main():
     import argparse

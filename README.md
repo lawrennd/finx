@@ -162,6 +162,27 @@ The tool uses YAML configuration files to separate public patterns from private 
 - **Directory Mapping**: Defines where different document types are stored
 - **Entity Database**: Stores contact details for financial entities
 
+### Employment Configuration
+
+Employers are configured using start and end dates:
+
+```yaml
+employment:
+  - name: "CURRENT_EMPLOYER"
+    patterns: ["current-employer"]
+    frequency: "monthly"
+    start_date: "2022-01-01"
+    # No end_date means currently employed
+  
+  - name: "PREVIOUS_EMPLOYER"
+    patterns: ["previous-employer"]
+    frequency: "monthly"
+    start_date: "2018-01-01"
+    end_date: "2021-12-31"
+```
+
+The tool automatically determines if an employer is current or previous based on the dates.
+
 See the [Usage Guide](docs/usage.md) for detailed configuration examples.
 
 ## Security Considerations

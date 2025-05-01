@@ -25,43 +25,41 @@ additional:
   patterns:
   - base: EXAMPLE_FinCEN
 
+# Flat structure for employment - status (current/previous) is determined by dates
 employment:
-  current:
-    - frequency: monthly
-      name: "EXAMPLE_CURRENT_EMPLOYER"
-      url: "https://example.com/employer1/payslips"
-      annual_document_type: "P60"
-      patterns:
-        - base: example-current-employer
-      start_date: '2023-01-01'
-    - frequency: monthly
-      name: "ANOTHER_CURRENT_EMPLOYER"
-      url: "https://example.com/employer2/payslips"
-      annual_document_type: "P60"
-      patterns:
-        - base: another-current-employer
-      start_date: '2023-01-01'
-      end_date: '2023-12-31'
-  generic:
-    - frequency: yearly
-      name: "EXAMPLE_P45_P60"
-      url: "https://example.com/employer1/p45p60"
-      patterns:
-        - base: example_p45
-        - base: example_p60
-      start_date: '2023-01-01'
-      end_date: '2024-12-31'
-  previous:
-    - frequency: monthly
-      name: "EXAMPLE_PREVIOUS_EMPLOYER"
-      annual_document_type: "P60"
-      patterns:
-        - base: example-previous-employer
-          identifiers:
-            - example1
-            - example2
-      start_date: '2020-01-01'
-      end_date: '2022-12-31'
+  - frequency: monthly
+    name: "EXAMPLE_CURRENT_EMPLOYER"
+    url: "https://example.com/employer1/payslips"
+    annual_document_type: "P60"
+    patterns:
+      - base: example-current-employer
+    start_date: '2023-01-01'
+  - frequency: monthly
+    name: "ANOTHER_CURRENT_EMPLOYER"
+    url: "https://example.com/employer2/payslips"
+    annual_document_type: "P60"
+    patterns:
+      - base: another-current-employer
+    start_date: '2023-01-01'
+    end_date: '2023-12-31'
+  - frequency: yearly
+    name: "EXAMPLE_P45_P60"
+    url: "https://example.com/employer1/p45p60"
+    patterns:
+      - base: example_p45
+      - base: example_p60
+    start_date: '2023-01-01'
+    end_date: '2024-12-31'
+  - frequency: monthly
+    name: "EXAMPLE_PREVIOUS_EMPLOYER"
+    annual_document_type: "P60"
+    patterns:
+      - base: example-previous-employer
+        identifiers:
+          - example1
+          - example2
+    start_date: '2020-01-01'
+    end_date: '2022-12-31'
 
 investment:
   uk:

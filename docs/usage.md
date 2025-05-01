@@ -365,16 +365,23 @@ tax:
 Contains account-specific information and should NOT be committed to version control:
 
 ```yaml
-tax:
-  employment:
-    current:
-      - name: "EXAMPLE_EMPLOYER"  # Replace with actual employer name
-        patterns:
-          - base: example-employer  # Replace with actual pattern
-        frequency: monthly
-        annual_document_type: P60
-        start_date: '2020-01-01'  # Replace with actual date
-        end_date: null  # null for current employment
+# Employment has a flat structure with status determined automatically from dates
+employment:
+  - name: "EXAMPLE_EMPLOYER"  # Replace with actual employer name
+    patterns:
+      - base: example-employer  # Replace with actual pattern
+    frequency: monthly
+    annual_document_type: P60
+    start_date: '2020-01-01'  # Replace with actual date
+    # No end_date means current employment
+
+  - name: "PREVIOUS_EMPLOYER"
+    patterns:
+      - base: previous-employer
+    frequency: monthly
+    annual_document_type: P60
+    start_date: '2018-01-01'
+    end_date: '2019-12-31'  # End date indicates previous employment
 
 invest:
   accounts:
@@ -383,6 +390,11 @@ invest:
       institution: "Example Broker"
       login_url: "https://example-broker.com/login"
 ```
+
+Employment status (current or previous) is automatically determined from dates:
+- An employer with no `end_date` or `end_date: null` is considered currently active
+- An employer with a specific `end_date` in the past is considered a previous employer
+- For the year being checked, employers with date ranges outside that year are skipped
 
 ### Directory Mapping (directory_mapping.yml)
 

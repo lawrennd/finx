@@ -56,7 +56,7 @@ class TestConfigIntegration:
         
         # Create sample files based on patterns in dummy config
         # Employment documents
-        for employer in self.dummy_config['employment']['current']:
+        for employer in self.dummy_config['employment']:
             if 'patterns' in employer:
                 for pattern_info in employer['patterns']:
                     base = pattern_info['base']
@@ -160,9 +160,12 @@ class TestConfigIntegration:
         assert 'bank' in self.dummy_config, "Bank section missing from dummy config"
         assert 'additional' in self.dummy_config, "Additional section missing from dummy config"
         
-        # Check employment subsections
-        assert 'current' in self.dummy_config['employment']
-        assert 'previous' in self.dummy_config['employment']
+        # Check employment is a list (flat structure)
+        assert isinstance(self.dummy_config['employment'], list), "Employment should be a flat list"
+        # Check each employer has required fields
+        for employer in self.dummy_config['employment']:
+            assert 'name' in employer, "Employer should have a name"
+            assert 'patterns' in employer or 'pattern' in employer, "Employer should have patterns"
         
         # Check investment subsections
         assert 'us' in self.dummy_config['investment']
@@ -487,8 +490,8 @@ class TestConfigIntegration:
         assert base_frequencies['p60'] == 'yearly'
         assert base_frequencies['p45'] == 'once'
         
-        # From private config
-        for employer in self.dummy_config['employment']['current']:
+        # From private config (using flat structure)
+        for employer in self.dummy_config['employment']:
             assert 'frequency' in employer
             assert employer['frequency'] in ['monthly', 'quarterly', 'yearly', 'once', 'annual']
     
@@ -548,17 +551,17 @@ class TestConfigIntegration:
     def test_start_end_dates(self):
         """Test that start and end dates follow the expected format."""
         # Sample a few items to check date format
-        for item in self.dummy_config['employment']['current']:
-            if 'start_date' in item:
-                start_date = item['start_date']
+        for employer in self.dummy_config['employment']:
+            if 'start_date' in employer:
+                start_date = employer['start_date']
                 # Should be a string in YYYY-MM-DD format
                 assert isinstance(start_date, str)
                 assert len(start_date) == 10
                 assert start_date[4] == '-' and start_date[7] == '-'
             
             # End date can be null for current relationships
-            if 'end_date' in item and item['end_date'] is not None:
-                end_date = item['end_date']
+            if 'end_date' in employer and employer['end_date'] is not None:
+                end_date = employer['end_date']
                 assert isinstance(end_date, str)
                 assert len(end_date) == 10
                 assert end_date[4] == '-' and end_date[7] == '-'

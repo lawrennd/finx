@@ -500,16 +500,16 @@ def extract_entity_names(config):
     
     # Extract from employment
     if 'employment' in config:
-        # Handle the 'current' section specifically
-        if 'current' in config['employment'] and isinstance(config['employment']['current'], list):
-            for employer in config['employment']['current']:
+        # Check if employment is a list (flat structure)
+        if isinstance(config['employment'], list):
+            for employer in config['employment']:
                 if isinstance(employer, dict) and 'name' in employer:
                     entity_names.append(employer['name'])
                 elif isinstance(employer, str):
                     entity_names.append(employer)
         else:
-            # Handle direct entries in employment
-            for key, value in config['employment'].items():
+            # Handle the legacy categorical structure
+            for category, value in config['employment'].items():
                 if isinstance(value, list):
                     for employer in value:
                         if isinstance(employer, dict) and 'name' in employer:

@@ -190,15 +190,14 @@ class TestTaxDocumentChecker(unittest.TestCase):
                 'files': ['file1.pdf', 'file2.pdf']
             }
         }
+        # Use the flat structure for employment
         self.checker.private_config = {
-            'employment': {
-                'current': [{'name': 'test_account'}]
-            }
+            'employment': [{'name': 'test_account'}]
         }
         with patch.object(self.checker, 'save_config'):
             updated = self.checker.update_yaml_with_dates()
-            assert updated['employment']['current'][0]['start_date'] == '2023-01-01'
-            assert updated['employment']['current'][0]['end_date'] == '2023-12-31'
+            assert updated['employment'][0]['start_date'] == '2023-01-01'
+            assert updated['employment'][0]['end_date'] == '2023-12-31'
 
     def test_load_config_file_not_found(self):
         """Test loading configuration when file is not found."""
@@ -533,9 +532,13 @@ class TestTaxDocumentChecker(unittest.TestCase):
         with patch.object(self.checker, 'save_config'):
             updated = self.checker.update_yaml_with_dates()
             
-            # Verify employment dates
-            self.assertEqual(updated['employment']['current'][0]['start_date'], '2023-01-01')
-            self.assertEqual(updated['employment']['previous'][0]['end_date'], '2022-12-31')
+            # Verify employment dates - using flat structure
+            current_corp = next((emp for emp in updated['employment'] if emp['name'] == 'Current Corp'), None)
+            past_corp = next((emp for emp in updated['employment'] if emp['name'] == 'Past Corp'), None)
+            self.assertIsNotNone(current_corp, "Current Corp not found in updated employment list")
+            self.assertIsNotNone(past_corp, "Past Corp not found in updated employment list")
+            self.assertEqual(current_corp['start_date'], '2023-01-01')
+            self.assertEqual(past_corp['end_date'], '2022-12-31')
             
             # Verify investment dates
             self.assertEqual(updated['investment']['us'][0]['start_date'], '2023-03-01')
