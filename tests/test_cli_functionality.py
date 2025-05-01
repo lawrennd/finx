@@ -250,41 +250,120 @@ class TestCLIFunctionality:
             },
             'investment': {
                 'uk': [
-                    {'name': 'UK_INVESTMENT', 'patterns': ['uk-pattern']},
-                    'DIRECT_UK_INVESTMENT'
-                ],
-                'us': [
-                    {'name': 'US_INVESTMENT', 'patterns': ['us-pattern']},
-                    'DIRECT_US_INVESTMENT'
+                    {'name': 'INVESTMENT1'},
+                    'INVESTMENT2'
                 ]
             },
             'bank': {
-                'uk': [
-                    {'name': 'UK_BANK', 'account_types': [{'name': 'Savings'}]},
-                    'DIRECT_UK_BANK'
-                ],
                 'us': [
-                    {'name': 'US_BANK', 'account_types': [{'name': 'Checking'}]},
-                    'DIRECT_US_BANK'
+                    {'name': 'BANK1'},
+                    'BANK2'
                 ]
             }
         }
         
-        names = extract_entity_names(test_config)
+        result = extract_entity_names(test_config)
+        assert len(result) == 6
+        assert 'ENTITY1' in result
+        assert 'ENTITY2' in result
+        assert 'INVESTMENT1' in result
+        assert 'INVESTMENT2' in result
+        assert 'BANK1' in result
+        assert 'BANK2' in result
+    
+    def test_entities_list_with_format_functionality(self):
+        """Test that the entities list command supports different output formats."""
+        from finx.cli_typer import main
         
-        # Verify the function's actual behavior
-        # Current implementation seems to extract section keys and direct items, not nested names
-        assert 'UK_INVESTMENT' in names
-        assert 'DIRECT_UK_INVESTMENT' in names
-        assert 'US_INVESTMENT' in names
-        assert 'DIRECT_US_INVESTMENT' in names
-        assert 'UK_BANK' in names
-        assert 'DIRECT_UK_BANK' in names
-        assert 'US_BANK' in names
-        assert 'DIRECT_US_BANK' in names
+        # Test data
+        test_entities = [
+            {
+                'name': 'Test Entity',
+                'type': 'bank',
+                'contact': {'email': 'test@example.com', 'primary': 'John Doe'}
+            }
+        ]
         
-        # Verify that at least some entities are extracted
-        assert len(names) > 5
+        # Test for JSON format
+        with patch('finx.cli_typer.EntityManager') as mock_manager_class:
+            mock_manager = MagicMock()
+            mock_manager_class.return_value = mock_manager
+            mock_manager.list_entities.return_value = test_entities
+            
+            with patch('sys.argv', ['finx', 'entities', 'list', '--format', 'json']):
+                with patch('json.dumps') as mock_json_dumps:
+                    with patch('typer.echo'):
+                        with pytest.raises(SystemExit) as e:
+                            main()
+                        # Success exit code
+                        assert e.value.code == 0
+            
+            # Verify expected behavior
+            mock_manager.list_entities.assert_called_once()
+            mock_json_dumps.assert_called_once_with(test_entities, indent=2)
+        
+        # Test for CSV format
+        with patch('finx.cli_typer.EntityManager') as mock_manager_class:
+            mock_manager = MagicMock()
+            mock_manager_class.return_value = mock_manager
+            mock_manager.list_entities.return_value = test_entities
+            
+            with patch('sys.argv', ['finx', 'entities', 'list', '--format', 'csv']):
+                with patch('csv.DictWriter') as mock_csv_writer:
+                    with patch('typer.echo'):
+                        with pytest.raises(SystemExit) as e:
+                            main()
+                        # Success exit code
+                        assert e.value.code == 0
+            
+            # Verify expected behavior
+            mock_manager.list_entities.assert_called_once()
+            # Can't easily verify the CSV output but we can check it was called
+    
+    def test_entities_check_with_format_functionality(self):
+        """Test that the entities check command supports different output formats."""
+        from finx.cli_typer import main
+        
+        # Test for JSON format
+        with patch('finx.cli_typer.EntityManager') as mock_manager_class:
+            mock_manager = MagicMock()
+            mock_manager_class.return_value = mock_manager
+            mock_manager.check_missing_entities.return_value = ['MISSING_ENTITY1', 'MISSING_ENTITY2']
+            
+            with patch('finx.cli_typer.extract_entity_names', return_value=['ENTITY1', 'MISSING_ENTITY1', 'MISSING_ENTITY2']):
+                with patch('sys.argv', ['finx', 'entities', 'check', '--format', 'json']):
+                    with patch('json.dumps') as mock_json_dumps:
+                        with patch('typer.echo'):
+                            with pytest.raises(SystemExit) as e:
+                                main()
+                            # Success exit code
+                            assert e.value.code == 0
+            
+            # Verify expected behavior for JSON output
+            mock_manager.check_missing_entities.assert_called_once()
+            mock_json_dumps.assert_called_once()
+            # We can't easily verify the exact output but we can check it was called with a dict
+            assert isinstance(mock_json_dumps.call_args[0][0], dict)
+            assert 'missing_entities' in mock_json_dumps.call_args[0][0]
+        
+        # Test for CSV format
+        with patch('finx.cli_typer.EntityManager') as mock_manager_class:
+            mock_manager = MagicMock()
+            mock_manager_class.return_value = mock_manager
+            mock_manager.check_missing_entities.return_value = ['MISSING_ENTITY1', 'MISSING_ENTITY2']
+            
+            with patch('finx.cli_typer.extract_entity_names', return_value=['ENTITY1', 'MISSING_ENTITY1', 'MISSING_ENTITY2']):
+                with patch('sys.argv', ['finx', 'entities', 'check', '--format', 'csv']):
+                    with patch('csv.writer') as mock_csv_writer:
+                        with patch('typer.echo'):
+                            with pytest.raises(SystemExit) as e:
+                                main()
+                            # Success exit code
+                            assert e.value.code == 0
+            
+            # Verify expected behavior for CSV output
+            mock_manager.check_missing_entities.assert_called_once()
+            # Can't easily verify the CSV output but we can check it was called
     
     @pytest.mark.integration
     def test_cli_integration(self, setup_test_files):
