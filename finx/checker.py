@@ -411,14 +411,26 @@ class FinancialDocumentManager:
                                 continue
                             
                             if 'patterns' in account_type:
+                                # Get entity name and URL if available
+                                entity_id = account_type.get('entity_id', bank.get('entity_id', bank.get('id')))
+                                entity_name = None
+                                entity_url = None
+                                
+                                if self.entity_manager:
+                                    entity = self.entity_manager.get_entity_by_id(entity_id)
+                                    if entity:
+                                        entity_name = entity.name
+                                        entity_url = entity.url
+                                
                                 # Combine bank and account_type info
                                 combined_info = {
                                     'id': account_type['id'],
-                                    'name': f"{bank['name']} - {account_type['name']}",
+                                    'entity_id': entity_id,
+                                    'name': f"{entity_name or bank.get('name', 'Bank')} - {account_type.get('name', 'Account')}",
                                     'frequency': account_type.get('frequency', bank.get('frequency', 'monthly')),
                                     'start_date': account_type.get('start_date', bank.get('start_date')),
                                     'end_date': account_type.get('end_date', bank.get('end_date')),
-                                    'url': bank.get('url')
+                                    'url': entity_url or bank.get('url')
                                 }
                                 for pattern in account_type['patterns']:
                                     process_pattern(pattern, combined_info, f'bank_{region}')
@@ -501,17 +513,21 @@ class FinancialDocumentManager:
             if category_key in ['employment', 'bank_uk', 'bank_us']:
                 default_frequency = 'monthly'
                
-            # Get entity ID - required field
-            entity_id = item_info.get('id')
-            if not entity_id:
-                self.logger.warning(f"Missing entity ID for pattern {pattern}, skipping")
+            # Get document ID - required field
+            doc_id = item_info.get('id')
+            if not doc_id:
+                self.logger.warning(f"Missing document ID for pattern {pattern}, skipping")
                 return
+            
+            # Get entity ID - might be the same as doc_id for backward compatibility
+            entity_id = item_info.get('entity_id', doc_id)
                 
             # Create the pattern dictionary with all metadata
             pattern_dict = {
                 'pattern': full_pattern,
-                'id': entity_id,
-                'name': item_info.get('name', ''),  # Name is now secondary info
+                'id': doc_id,
+                'entity_id': entity_id,
+                'name': item_info.get('name', ''),
                 'frequency': item_info.get('frequency', default_frequency),
                 'start_date': pattern.get('start_date', item_info.get('start_date')) if isinstance(pattern, dict) else item_info.get('start_date'),
                 'end_date': pattern.get('end_date', item_info.get('end_date')) if isinstance(pattern, dict) else item_info.get('end_date')
@@ -603,14 +619,26 @@ class FinancialDocumentManager:
                                         continue
                                     
                                     if 'patterns' in account_type:
+                                        # Get entity name and URL if available
+                                        entity_id = account_type.get('entity_id', bank.get('entity_id', bank.get('id')))
+                                        entity_name = None
+                                        entity_url = None
+                                        
+                                        if self.entity_manager:
+                                            entity = self.entity_manager.get_entity_by_id(entity_id)
+                                            if entity:
+                                                entity_name = entity.name
+                                                entity_url = entity.url
+                                        
                                         # Combine bank and account_type info
                                         combined_info = {
                                             'id': account_type['id'],
-                                            'name': f"{bank['name']} - {account_type['name']}",
+                                            'entity_id': entity_id,
+                                            'name': f"{entity_name or bank.get('name', 'Bank')} - {account_type.get('name', 'Account')}",
                                             'frequency': account_type.get('frequency', bank.get('frequency', 'monthly')),
                                             'start_date': account_type.get('start_date', bank.get('start_date')),
                                             'end_date': account_type.get('end_date', bank.get('end_date')),
-                                            'url': bank.get('url')
+                                            'url': entity_url or bank.get('url')
                                         }
                                         for pattern in account_type['patterns']:
                                             process_pattern(pattern, combined_info, f'bank_{region}')
@@ -1099,24 +1127,33 @@ class FinancialDocumentManager:
         # Check in employment
         if 'employment' in self.config:
             for employer in self.config['employment']:
-                if isinstance(employer, dict) and employer.get('id') == entity_id and 'url' in employer:
-                    return employer['url']
+                if isinstance(employer, dict):
+                    # Check entity_id first, then fall back to id (backwards compatibility)
+                    if employer.get('entity_id') == entity_id or employer.get('id') == entity_id:
+                        if 'url' in employer:
+                            return employer['url']
                     
         # Check in investment
         if 'investment' in self.config:
             for region in ['uk', 'us']:
                 if region in self.config['investment']:
                     for item in self.config['investment'][region]:
-                        if isinstance(item, dict) and item.get('id') == entity_id and 'url' in item:
-                            return item['url']
+                        if isinstance(item, dict):
+                            # Check entity_id first, then fall back to id
+                            if item.get('entity_id') == entity_id or item.get('id') == entity_id:
+                                if 'url' in item:
+                                    return item['url']
                             
         # Check in bank
         if 'bank' in self.config:
             for region in ['uk', 'us']:
                 if region in self.config['bank']:
                     for item in self.config['bank'][region]:
-                        if isinstance(item, dict) and item.get('id') == entity_id and 'url' in item:
-                            return item['url']
+                        if isinstance(item, dict):
+                            # Check entity_id first, then fall back to id
+                            if item.get('entity_id') == entity_id or item.get('id') == entity_id:
+                                if 'url' in item:
+                                    return item['url']
                             
         return None
 
@@ -1166,12 +1203,80 @@ class FinancialDocumentManager:
             # Default to inactive
             return 'inactive'
 
+    def validate_entity_references(self):
+        """Validate that all entity_id references exist in the entities file."""
+        if not self.entity_manager:
+            self.logger.warning("No entity manager available for validation")
+            return False
+            
+        entities = self.entity_manager.load_entities()
+        if not entities:
+            self.logger.warning("No entities loaded for validation")
+            return False
+            
+        entity_ids = {entity.id for entity in entities}
+        missing_entities = []
+        
+        # Check employment
+        if 'employment' in self.config:
+            for employer in self.config['employment']:
+                if isinstance(employer, dict) and 'entity_id' in employer:
+                    entity_id = employer['entity_id']
+                    if entity_id not in entity_ids:
+                        missing_entities.append((entity_id, 'employment', employer.get('id')))
+        
+        # Check investment
+        if 'investment' in self.config:
+            for region in ['uk', 'us']:
+                if region in self.config['investment']:
+                    for item in self.config['investment'][region]:
+                        if isinstance(item, dict) and 'entity_id' in item:
+                            entity_id = item['entity_id']
+                            if entity_id not in entity_ids:
+                                missing_entities.append((entity_id, f'investment_{region}', item.get('id')))
+        
+        # Check bank
+        if 'bank' in self.config:
+            for region in ['uk', 'us']:
+                if region in self.config['bank']:
+                    for item in self.config['bank'][region]:
+                        if isinstance(item, dict) and 'entity_id' in item:
+                            entity_id = item['entity_id']
+                            if entity_id not in entity_ids:
+                                missing_entities.append((entity_id, f'bank_{region}', item.get('id')))
+                                
+                        # Check account types
+                        if isinstance(item, dict) and 'account_types' in item:
+                            for account in item['account_types']:
+                                if 'entity_id' in account:
+                                    entity_id = account['entity_id']
+                                    if entity_id not in entity_ids:
+                                        missing_entities.append((entity_id, f'bank_{region}', account.get('id')))
+        
+        # Check additional
+        if 'additional' in self.config:
+            if isinstance(self.config['additional'], list):
+                for item in self.config['additional']:
+                    if isinstance(item, dict) and 'entity_id' in item:
+                        entity_id = item['entity_id']
+                        if entity_id not in entity_ids:
+                            missing_entities.append((entity_id, 'additional', item.get('id')))
+        
+        if missing_entities:
+            self.logger.warning(f"Found {len(missing_entities)} missing entity references:")
+            for entity_id, category, doc_id in missing_entities:
+                self.logger.warning(f"  - Missing entity '{entity_id}' referenced by {category}/{doc_id}")
+            return False
+            
+        return True
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description='Check tax documents for a specific year')
     parser.add_argument('--year', type=str, help='Specific year to check (e.g., 2023)')
     parser.add_argument('--update-dates', action='store_true', help='Update YAML with inferred dates')
     parser.add_argument('--list-missing', action='store_true', help='Generate dummy filenames for missing files')
+    parser.add_argument('--validate-entities', action='store_true', help='Validate entity ID references')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
     parser.add_argument('--log-level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], 
                         default='INFO', help='Set the logging level')
@@ -1194,6 +1299,16 @@ def main():
         logger.debug(f"Config file: {checker.config_file}")
         logger.debug(f"Private config file: {checker.private_config_file}")
         logger.debug(f"Directory mapping file: {checker.directory_mapping_file}")
+    
+    if args.validate_entities:
+        if args.verbose:
+            logger.info("Validating entity references...")
+        valid = checker.validate_entity_references()
+        if valid:
+            logger.info("All entity references are valid")
+        else:
+            logger.error("Some entity references are invalid. See warnings above.")
+        return
     
     if args.update_dates:
         if args.verbose:
