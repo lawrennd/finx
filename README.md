@@ -162,19 +162,44 @@ The tool uses YAML configuration files to separate public patterns from private 
 - **Directory Mapping**: Defines where different document types are stored
 - **Entity Database**: Stores contact details for financial entities
 
+### Dual ID System
+
+The finance document configuration specifies two ids for all entries in configuration files:
+
+- **id**: A unique identifier for each document type (e.g., `current-employer-payslip`)
+- **entity_id**: A reference to the entity in the `finx_entities.yml` file (e.g., `current-employer`)
+
+
+Example configuration:
+
+```yaml
+employment:
+  - id: "current-employer-payslip"
+    entity_id: "current-employer"
+    name: "CURRENT_EMPLOYER"
+    patterns: ["current-employer"]
+    frequency: "monthly"
+    start_date: "2022-01-01"
+```
+
+
 ### Employment Configuration
 
 Employers are configured using start and end dates:
 
 ```yaml
 employment:
-  - name: "CURRENT_EMPLOYER"
+  - id: "current-employer-payslip"
+    entity_id: "current-employer"
+    name: "CURRENT_EMPLOYER"
     patterns: ["current-employer"]
     frequency: "monthly"
     start_date: "2022-01-01"
     # No end_date means currently employed
   
-  - name: "PREVIOUS_EMPLOYER"
+  - id: "previous-employer-payslip"
+    entity_id: "previous-employer"
+    name: "PREVIOUS_EMPLOYER"
     patterns: ["previous-employer"]
     frequency: "monthly"
     start_date: "2018-01-01"
