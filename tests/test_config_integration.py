@@ -164,8 +164,10 @@ class TestConfigIntegration:
         assert isinstance(self.dummy_config['employment'], list), "Employment should be a flat list"
         # Check each employer has required fields
         for employer in self.dummy_config['employment']:
-            assert 'name' in employer, "Employer should have a name"
-            assert 'patterns' in employer or 'pattern' in employer, "Employer should have patterns"
+            assert 'id' in employer, "Employer should have an id"
+            # Name is optional if entity_id is provided
+            if 'entity_id' not in employer:
+                assert 'name' in employer, "Employer without entity_id should have a name"
         
         # Check investment subsections
         assert 'us' in self.dummy_config['investment']
@@ -637,4 +639,143 @@ class TestConfigIntegration:
                             assert e.code == 0 or e.code == 1, "Expected exit code 0 or 1"
                         
                         # Check for warning messages
-                        assert len(mock_warning.call_args_list) > 0, "Expected warning messages in log output" 
+                        assert len(mock_warning.call_args_list) > 0, "Expected warning messages in log output"
+    
+    def test_dual_id_system(self):
+        """Test that the dual ID system is implemented correctly."""
+        # Check ids in dummy config
+        for employer in self.dummy_config['employment']:
+            if isinstance(employer, dict):
+                assert 'id' in employer, "Each employer should have an id"
+                # entity_id might not be in all entries during transition
+                if 'entity_id' in employer:
+                    assert employer['entity_id'], "entity_id should not be empty if present"
+                
+        # Check ids in investment section
+        for region in ['uk', 'us']:
+            for investment in self.dummy_config['investment'][region]:
+                if isinstance(investment, dict):
+                    assert 'id' in investment, f"Each investment in {region} should have an id"
+                    # entity_id might not be in all entries during transition
+                    if 'entity_id' in investment:
+                        assert investment['entity_id'], "entity_id should not be empty if present"
+        
+        # Check ids in bank section
+        for region in ['uk', 'us']:
+            for bank in self.dummy_config['bank'][region]:
+                if isinstance(bank, dict):
+                    assert 'id' in bank, f"Each bank in {region} should have an id"
+                    # entity_id might not be in all entries during transition
+                    if 'entity_id' in bank:
+                        assert bank['entity_id'], "entity_id should not be empty if present"
+                    
+                    # Check account types if present
+                    if 'account_types' in bank:
+                        for account in bank['account_types']:
+                            assert 'id' in account, "Each account type should have an id"
+                            # entity_id might not be in all entries during transition
+                            if 'entity_id' in account:
+                                assert account['entity_id'], "entity_id should not be empty if present"
+        
+        # Check ids in additional section
+        for doc in self.dummy_config['additional']:
+            if isinstance(doc, dict):
+                assert 'id' in doc, "Each additional document should have an id"
+                # entity_id might not be in all entries during transition
+                if 'entity_id' in doc:
+                    assert doc['entity_id'], "entity_id should not be empty if present"
+    
+    def test_entity_id_references(self):
+        """Test that entity_id references exist in the entities file."""
+        # Create test entities file
+        entities_file = os.path.join(self.temp_dir, "test_entities.yml")
+        test_entities = {
+            "entities": [
+                {
+                    "id": "test-employer",
+                    "name": "Test Employer",
+                    "type": "employer"
+                },
+                {
+                    "id": "test-bank",
+                    "name": "Test Bank",
+                    "type": "bank"
+                },
+                {
+                    "id": "test-investment",
+                    "name": "Test Investment",
+                    "type": "investment"
+                }
+            ]
+        }
+        
+        with open(entities_file, 'w') as f:
+            yaml.dump(test_entities, f)
+        
+        # Create test config with entity_id references
+        config_file = os.path.join(self.temp_dir, "test_config.yml")
+        test_config = {
+            "employment": [
+                {
+                    "id": "test-employer-payslip",
+                    "entity_id": "test-employer",
+                    "name": "Test Employer",
+                    "frequency": "monthly",
+                    "patterns": ["test-employer"]
+                }
+            ],
+            "bank": {
+                "uk": [
+                    {
+                        "id": "test-bank-statement",
+                        "entity_id": "test-bank",
+                        "name": "Test Bank",
+                        "patterns": ["test-bank-statement"]
+                    }
+                ]
+            },
+            "investment": {
+                "uk": [
+                    {
+                        "id": "test-investment-statement",
+                        "entity_id": "test-investment",
+                        "name": "Test Investment",
+                        "patterns": ["test-investment-statement"]
+                    }
+                ]
+            }
+        }
+        
+        with open(config_file, 'w') as f:
+            yaml.dump(test_config, f)
+        
+        # Create a checker with the test files
+        from finx.entities import EntityManager
+        
+        # Initialize entity manager with the test file
+        entity_manager = EntityManager(entities_file)
+        entities = entity_manager.load_entities()
+        
+        # Load the config
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        # Check that all entity_id references exist in entities
+        entity_ids = {entity.id for entity in entities}
+        
+        # Check employment
+        for employer in config['employment']:
+            if 'entity_id' in employer:
+                assert employer['entity_id'] in entity_ids, f"Entity ID {employer['entity_id']} not found in entities"
+        
+        # Check bank
+        for region in ['uk']:
+            for bank in config['bank'][region]:
+                if 'entity_id' in bank:
+                    assert bank['entity_id'] in entity_ids, f"Entity ID {bank['entity_id']} not found in entities"
+        
+        # Check investment
+        for region in ['uk']:
+            for investment in config['investment'][region]:
+                if 'entity_id' in investment:
+                    assert investment['entity_id'] in entity_ids, f"Entity ID {investment['entity_id']} not found in entities" 
