@@ -350,6 +350,38 @@ def tax_update_dates(
     
     return 0
 
+@tax_app.command("validate-entities")
+def tax_validate_entities(
+    base_path: str = typer.Option(".", help="Base path for tax documents (default: current directory)"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output for debugging"),
+    log_file: Optional[str] = typer.Option(None, help="Path to log file (default: finx.log)"),
+    config_file: Optional[str] = typer.Option(None, help="Path to base configuration file"),
+    private_config_file: Optional[str] = typer.Option(None, help="Path to private configuration file"),
+    directory_mapping_file: Optional[str] = typer.Option(None, help="Path to directory mapping file"),
+    entities_file: Optional[str] = typer.Option(None, help="Path to entities file")
+):
+    """Validate entity ID references in the configuration files."""
+    logger = logging.getLogger('finx')
+    
+    checker = FinancialDocumentManager(
+        base_path=base_path,
+        config_file=config_file,
+        private_config_file=private_config_file,
+        directory_mapping_file=directory_mapping_file,
+        entities_file=entities_file,
+        verbose=verbose
+    )
+    
+    print("Validating entity references...")
+    valid = checker.validate_entity_references()
+    
+    if valid:
+        print("All entity references are valid")
+        return 0
+    else:
+        print("Some entity references are invalid. See warnings above.")
+        return 1
+
 # Placeholder commands for future development
 @app.command("invest")
 def invest(
