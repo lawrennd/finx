@@ -406,7 +406,8 @@ class TestFinancialDocumentManager(unittest.TestCase):
         test_args = ['--year', '2023']
         with patch('sys.argv', ['financial-document-manager'] + test_args):
             with patch('argparse.ArgumentParser.parse_args') as mock_args:
-                mock_args.return_value = MagicMock(year='2023', update_dates=False, log_level='INFO', list_missing=False)
+                mock_args.return_value = MagicMock(year='2023', update_dates=False, log_level='INFO', 
+                                                 list_missing=False, validate_entities=False, verbose=False)
                 with patch.object(FinancialDocumentManager, 'check_year') as mock_check:
                     mock_check.return_value = True
                     with patch('os.path.dirname', return_value='/test/path'):
@@ -419,7 +420,8 @@ class TestFinancialDocumentManager(unittest.TestCase):
         test_args = ['--update-dates']
         with patch('sys.argv', ['financial-document-manager'] + test_args):
             with patch('argparse.ArgumentParser.parse_args') as mock_args:
-                mock_args.return_value = MagicMock(year=None, update_dates=True, log_level='INFO')
+                mock_args.return_value = MagicMock(year=None, update_dates=True, log_level='INFO',
+                                                 list_missing=False, validate_entities=False, verbose=False)
                 with patch.object(FinancialDocumentManager, 'update_yaml_with_dates') as mock_update:
                     with patch('os.path.dirname', return_value='/test/path'):
                         from finx.checker import main
@@ -430,7 +432,8 @@ class TestFinancialDocumentManager(unittest.TestCase):
         """Test the main function with no arguments."""
         with patch('sys.argv', ['financial-document-manager']):
             with patch('argparse.ArgumentParser.parse_args') as mock_args:
-                mock_args.return_value = MagicMock(year=None, update_dates=False, log_level='INFO', list_missing=False)
+                mock_args.return_value = MagicMock(year=None, update_dates=False, log_level='INFO', 
+                                                 list_missing=False, validate_entities=False, verbose=False)
                 with patch.object(FinancialDocumentManager, 'list_available_years') as mock_list:
                     mock_list.return_value = ['2022', '2023']
                     with patch.object(FinancialDocumentManager, 'check_year') as mock_check:
@@ -1337,6 +1340,20 @@ class TestFinancialDocumentManager(unittest.TestCase):
         self.assertEqual(current_pattern['pattern'], 'static-pattern')
         self.assertEqual(current_pattern['start_date'], '2023-01-01')
         self.assertEqual(current_pattern['end_date'], '2023-12-31')
+
+    def test_main_function_validate_entities(self):
+        """Test the main function with validate_entities flag."""
+        test_args = ['--validate-entities']
+        with patch('sys.argv', ['financial-document-manager'] + test_args):
+            with patch('argparse.ArgumentParser.parse_args') as mock_args:
+                mock_args.return_value = MagicMock(year=None, update_dates=False, log_level='INFO',
+                                                list_missing=False, validate_entities=True, verbose=False)
+                with patch.object(FinancialDocumentManager, 'validate_entity_references') as mock_validate:
+                    mock_validate.return_value = True
+                    with patch('os.path.dirname', return_value='/test/path'):
+                        from finx.checker import main
+                        main()
+                        mock_validate.assert_called_once()
 
 if __name__ == '__main__':
     unittest.main()

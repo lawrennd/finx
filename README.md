@@ -1,8 +1,8 @@
 # Finance Assistant
 
-[![Tests](https://github.com/lawrennd/tax_document_checker/actions/workflows/tests.yml/badge.svg)](https://github.com/lawrennd/tax_document_checker/actions/workflows/tests.yml)
-[![codecov](https://codecov.io/gh/lawrennd/tax_document_checker/branch/main/graph/badge.svg)](https://codecov.io/gh/lawrennd/tax_document_checker)
-[![Python Versions](https://img.shields.io/pypi/pyversions/tax-document-checker.svg)](https://pypi.org/project/tax-document-checker/)
+[![Tests](https://github.com/lawrennd/finx/actions/workflows/tests.yml/badge.svg)](https://github.com/lawrennd/finx/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/lawrennd/finx/branch/main/graph/badge.svg)](https://codecov.io/gh/lawrennd/finx)
+[![Python Versions](https://img.shields.io/pypi/pyversions/finx.svg)](https://pypi.org/project/finx/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A command-line toolkit for managing personal finances, including tax document organization.
@@ -87,6 +87,12 @@ finx entities list --type accountant
 
 # Check for missing entities
 finx entities check
+
+# Migrate to the dual ID system
+finx entities migrate --config=your_config.yml --entities=your_entities.yml
+
+# Validate entity references
+finx entities validate --config=your_config.yml --entities=your_entities.yml
 ```
 
 The tool maintains a database of financial entities and their contact details in `finx_entities.yml`. Each entity can be one of the following types:
@@ -153,6 +159,8 @@ finx estate verify
 
 For detailed usage instructions for each command, see the [Usage Guide](docs/usage.md).
 
+For common workflows and practical examples, see the [Common Workflows Guide](docs/common_workflows.md).
+
 ## Configuration
 
 The tool uses YAML configuration files to separate public patterns from private account information:
@@ -162,19 +170,45 @@ The tool uses YAML configuration files to separate public patterns from private 
 - **Directory Mapping**: Defines where different document types are stored
 - **Entity Database**: Stores contact details for financial entities
 
+### Dual ID System
+
+The finance document configuration specifies two ids for all entries in configuration files:
+
+- **id**: A unique identifier for each document type (e.g., `current-employer-payslip`)
+- **entity_id**: A reference to the entity in the `finx_entities.yml` file (e.g., `current-employer`)
+
+For guidance on migrating existing configurations to the dual ID system, see the [Migration Guide](docs/dual_id_migration.md).
+
+Example configuration:
+
+```yaml
+employment:
+  - id: "current-employer-payslip"
+    entity_id: "current-employer"
+    name: "CURRENT_EMPLOYER"
+    patterns: ["current-employer"]
+    frequency: "monthly"
+    start_date: "2022-01-01"
+```
+
+
 ### Employment Configuration
 
 Employers are configured using start and end dates:
 
 ```yaml
 employment:
-  - name: "CURRENT_EMPLOYER"
+  - id: "current-employer-payslip"
+    entity_id: "current-employer"
+    name: "CURRENT_EMPLOYER"
     patterns: ["current-employer"]
     frequency: "monthly"
     start_date: "2022-01-01"
     # No end_date means currently employed
   
-  - name: "PREVIOUS_EMPLOYER"
+  - id: "previous-employer-payslip"
+    entity_id: "previous-employer"
+    name: "PREVIOUS_EMPLOYER"
     patterns: ["previous-employer"]
     frequency: "monthly"
     start_date: "2018-01-01"
@@ -184,6 +218,13 @@ employment:
 The tool automatically determines if an employer is current or previous based on the dates.
 
 See the [Usage Guide](docs/usage.md) for detailed configuration examples.
+
+## Development Roadmap
+
+We follow a structured approach to improving the library through Code Improvement Plans (CIPs):
+
+- [CIP-0001](cip/cip0001.md): Dual ID Implementation (Completed)
+- [CIP-0002](cip/cip0002.md): Enhancing User Experience and Documentation (In Progress)
 
 ## Security Considerations
 

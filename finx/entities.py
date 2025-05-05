@@ -35,6 +35,7 @@ class Entity:
     email: Optional[str] = None
     phone: Optional[str] = None
     url: Optional[str] = None
+    country: Optional[str] = None
 
     def __post_init__(self):
         """Initialize default values and validate required fields."""
@@ -59,9 +60,14 @@ class Entity:
         if self.phone and 'phone' not in self.contact:
             self.contact['phone'] = self.phone
 
+        # If country is provided but not in address, add it
+        if self.country and 'country' not in self.address:
+            self.address['country'] = self.country
+
         # Sync back to direct attributes
         self.email = self.contact.get('email', self.email)
         self.phone = self.contact.get('phone', self.phone)
+        self.country = self.address.get('country', self.country)
 
     def validate(self) -> bool:
         """Validate the entity has required fields."""
@@ -81,6 +87,8 @@ class Entity:
             result["notes"] = self.notes
         if self.url:
             result["url"] = self.url
+        if self.country:
+            result["country"] = self.country
             
         return result
 

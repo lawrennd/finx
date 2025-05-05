@@ -4,62 +4,55 @@
 additional:
 - frequency: yearly
   id: tax_return
-  name: EXAMPLE_TAX_RETURN
-  url: "https://example.com/tax-return"
+  entity_id: tax_authority
   patterns:
   - base: example-tax-return
   start_date: '2023-01-01'
   end_date: '2025-01-01'
 - frequency: yearly
   id: e_file
-  name: EXAMPLE_E_FILE
-  url: "https://example.com/e-file"
+  entity_id: tax_authority
   patterns:
   - base: EXAMPLE-E-FILE
 - frequency: yearly
   id: federal_tax
-  name: EXAMPLE_FEDERAL_TAX
-  url: "https://example.com/federal-tax"
+  entity_id: tax_authority
   patterns:
   - base: EXAMPLE_Federal
 - frequency: yearly
   id: fincen
-  name: EXAMPLE_FINCEN
-  url: "https://example.com/fincen"
+  entity_id: tax_authority
   patterns:
   - base: EXAMPLE_FinCEN
 
 # Flat structure for employment - status (current/previous) is determined by dates
 employment:
   - frequency: monthly
-    id: current_employer1
-    name: "EXAMPLE_CURRENT_EMPLOYER"
-    url: "https://example.com/employer1/payslips"
+    id: current_employer1_payslip
+    entity_id: current_employer1
     annual_document_type: "P60"
     patterns:
       - base: example-current-employer
     start_date: '2023-01-01'
   - frequency: monthly
-    id: current_employer2
-    name: "ANOTHER_CURRENT_EMPLOYER"
-    url: "https://example.com/employer2/payslips"
+    id: current_employer2_payslip
+    entity_id: current_employer2
     annual_document_type: "P60"
     patterns:
       - base: another-current-employer
     start_date: '2023-01-01'
     end_date: '2023-12-31'
   - frequency: yearly
-    id: p45_p60
-    name: "EXAMPLE_P45_P60"
-    url: "https://example.com/employer1/p45p60"
+    id: p45_p60_docs
+    entity_id: current_employer1
     patterns:
       - base: example_p45
       - base: example_p60
     start_date: '2023-01-01'
     end_date: '2024-12-31'
   - frequency: monthly
-    id: previous_employer
-    name: "EXAMPLE_PREVIOUS_EMPLOYER"
+    id: previous_employer_payslip
+    entity_id: previous_employer
     annual_document_type: "P60"
     patterns:
       - base: example-previous-employer
@@ -72,17 +65,15 @@ employment:
 investment:
   uk:
     - frequency: yearly
-      id: uk_investment1
-      name: "EXAMPLE_UK_INVESTMENT"
-      url: "https://example.com/uk-investment"
+      id: uk_investment1_statement
+      entity_id: uk_investment1
       annual_document_type: "Annual Statement"
       patterns:
         - base: example-uk-investment
       start_date: '2023-01-01'
     - frequency: monthly
-      id: uk_investment2
-      name: "ANOTHER_UK_INVESTMENT"
-      url: "https://example.com/another-uk-investment"
+      id: uk_investment2_statement
+      entity_id: uk_investment2
       annual_document_type: "Annual Statement"
       patterns:
         - base: another-uk-investment
@@ -90,18 +81,16 @@ investment:
       end_date: '2023-12-31'
   us:
     - frequency: yearly
-      id: us_investment1
-      name: "EXAMPLE_US_INVESTMENT"
-      url: "https://example.com/us-investment"
+      id: us_investment1_statement
+      entity_id: us_investment1
       annual_document_type: "1099"
       patterns:
         - base: example-us-investment
           identifiers: ["example1", "example2"]
       start_date: '2023-01-01'
     - frequency: yearly
-      id: us_investment2
-      name: "ANOTHER_US_INVESTMENT"
-      url: "https://example.com/another-us-investment"
+      id: us_investment2_statement
+      entity_id: us_investment2
       annual_document_type: "1099"
       patterns:
         - base: another-us-investment
@@ -111,38 +100,41 @@ investment:
 bank:
   uk:
     - id: uk_bank1_joint
-      name: "EXAMPLE_UK_BANK - Joint Account"
-      url: "https://example.com/uk-bank/joint"
+      entity_id: uk_bank1
       frequency: monthly
       annual_document_type: "Annual Statement"
       account_types:
-        - name: "Joint Account"
+        - id: uk_bank1_joint_account
+          entity_id: uk_bank1_joint
+          name: "Joint Account"
           patterns:
             - base: example-uk-bank
               identifiers: ["joint"]
           start_date: '2023-01-01'
           end_date: '2024-12-31'
-        - name: "Savings"
+        - id: uk_bank1_joint_savings
+          entity_id: uk_bank1_joint
+          name: "Savings"
           patterns:
             - base: example-uk-bank
               identifiers: ["savings"]
           start_date: '2023-01-01'
           end_date: '2024-12-31'
     - id: uk_bank1_savings
-      name: "EXAMPLE_UK_BANK - Savings"
-      url: "https://example.com/uk-bank/savings"
+      entity_id: uk_bank1
       frequency: monthly
       annual_document_type: "Annual Statement"
       account_types:
-        - name: "Savings"
+        - id: uk_bank1_savings_account
+          entity_id: uk_bank1_savings
+          name: "Savings"
           patterns:
             - base: example-uk-bank
               identifiers: ["savings"]
           start_date: '2023-01-01'
           end_date: '2024-12-31'
     - id: uk_bank2
-      name: "ANOTHER_UK_BANK"
-      url: "https://example.com/another-uk-bank"
+      entity_id: uk_bank2
       frequency: yearly
       annual_document_type: "Annual Statement"
       patterns:
@@ -151,12 +143,13 @@ bank:
       end_date: '2024-12-31'
   us:
     - id: us_bank1_savings
-      name: "EXAMPLE_US_BANK - savings"
-      url: "https://example.com/us-bank/savings"
+      entity_id: us_bank1_savings
       frequency: quarterly
       annual_document_type: "1099"
       account_types:
-        - name: "savings"
+        - id: us_bank1_savings_account
+          entity_id: us_bank1_savings
+          name: "Savings"
           patterns:
             - base: example-us-bank
               identifiers:
@@ -164,12 +157,13 @@ bank:
           start_date: '2023-01-01'
           end_date: '2023-12-31'
     - id: us_bank2_savings
-      name: "ANOTHER_US_BANK - savings"
-      url: "https://example.com/another-us-bank/savings"
+      entity_id: us_bank2_savings
       frequency: monthly
       annual_document_type: "1099"
       account_types:
-        - name: "savings"
+        - id: us_bank2_savings_account
+          entity_id: us_bank2_savings
+          name: "Savings"
           patterns:
             - base: another-us-bank
               identifiers:

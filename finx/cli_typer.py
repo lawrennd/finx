@@ -300,7 +300,9 @@ def tax_zip(
     config_file: Optional[str] = typer.Option(None, help="Path to base configuration file"),
     private_config_file: Optional[str] = typer.Option(None, help="Path to private configuration file"),
     directory_mapping_file: Optional[str] = typer.Option(None, help="Path to directory mapping file"),
-    dummy: bool = typer.Option(False, help="Run in dummy mode without creating zip")
+    dummy: bool = typer.Option(False, help="Run in dummy mode without creating zip"),
+    output_path: Optional[str] = typer.Option(None, "--output", "-o", help="Path where to save the zip file"),
+    password: Optional[str] = typer.Option(None, "--password", "-p", help="Password for the zip file")
 ):
     """Create zip archive of tax documents."""
     logger = logging.getLogger('finx')
@@ -316,6 +318,8 @@ def tax_zip(
         config_file=config_file,
         private_config_file=private_config_file,
         directory_mapping_file=directory_mapping_file,
+        output_path=output_path,
+        password=password,
         verbose=verbose
     )
     
@@ -507,6 +511,129 @@ def entities_check(
                 typer.echo(f"  - {name}")
         else:
             typer.echo("All entities mentioned in config files are listed in the entities database.")
+
+@entities_app.command("validate")
+def entities_validate(
+    format: OutputFormat = typer.Option(OutputFormat.text, help="Output format (text, json, csv)"),
+    entities_file: Optional[str] = typer.Option(None, help="Path to entities file (default: finx_entities.yml in current directory)"),
+    base_path: str = typer.Option(".", help="Base path for tax documents (default: current directory)"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output for debugging"),
+    config_file: Optional[str] = typer.Option(None, help="Path to base configuration file"),
+    private_config_file: Optional[str] = typer.Option(None, help="Path to private configuration file"),
+    directory_mapping_file: Optional[str] = typer.Option(None, help="Path to directory mapping file")
+):
+    """Validate entity ID references in the configuration files."""
+    logger = logging.getLogger('finx')
+    
+    checker = FinancialDocumentManager(
+        base_path=base_path,
+        config_file=config_file,
+        private_config_file=private_config_file,
+        directory_mapping_file=directory_mapping_file,
+        entities_file=entities_file,
+        verbose=verbose
+    )
+    
+    print("Validating entity references...")
+    valid = checker.validate_entity_references()
+    missing_entities = []
+    
+    # For JSON and CSV output formats, we need to collect missing entities
+    if format != OutputFormat.text and not valid:
+        entities = checker.entity_manager.load_entities()
+        entity_ids = {entity.id for entity in entities}
+        
+        # Similar to validate_entity_references but returns missing entities
+        # Check employment
+        if 'employment' in checker.config:
+            for employer in checker.config['employment']:
+                if isinstance(employer, dict) and 'entity_id' in employer:
+                    entity_id = employer['entity_id']
+                    if entity_id not in entity_ids:
+                        missing_entities.append({
+                            'entity_id': entity_id, 
+                            'category': 'employment', 
+                            'doc_id': employer.get('id')
+                        })
+        
+        # Check investment
+        if 'investment' in checker.config:
+            for region in ['uk', 'us']:
+                if region in checker.config['investment']:
+                    for item in checker.config['investment'][region]:
+                        if isinstance(item, dict) and 'entity_id' in item:
+                            entity_id = item['entity_id']
+                            if entity_id not in entity_ids:
+                                missing_entities.append({
+                                    'entity_id': entity_id, 
+                                    'category': f'investment_{region}', 
+                                    'doc_id': item.get('id')
+                                })
+        
+        # Check bank
+        if 'bank' in checker.config:
+            for region in ['uk', 'us']:
+                if region in checker.config['bank']:
+                    for item in checker.config['bank'][region]:
+                        if isinstance(item, dict) and 'entity_id' in item:
+                            entity_id = item['entity_id']
+                            if entity_id not in entity_ids:
+                                missing_entities.append({
+                                    'entity_id': entity_id, 
+                                    'category': f'bank_{region}', 
+                                    'doc_id': item.get('id')
+                                })
+                                
+                        # Check account types
+                        if isinstance(item, dict) and 'account_types' in item:
+                            for account in item['account_types']:
+                                if 'entity_id' in account:
+                                    entity_id = account['entity_id']
+                                    if entity_id not in entity_ids:
+                                        missing_entities.append({
+                                            'entity_id': entity_id, 
+                                            'category': f'bank_{region}', 
+                                            'doc_id': account.get('id')
+                                        })
+        
+        # Check additional
+        if 'additional' in checker.config:
+            if isinstance(checker.config['additional'], list):
+                for item in checker.config['additional']:
+                    if isinstance(item, dict) and 'entity_id' in item:
+                        entity_id = item['entity_id']
+                        if entity_id not in entity_ids:
+                            missing_entities.append({
+                                'entity_id': entity_id, 
+                                'category': 'additional', 
+                                'doc_id': item.get('id')
+                            })
+    
+    # Format output based on selected format
+    if format == OutputFormat.json:
+        result = {
+            "valid": valid,
+            "missing_entities": missing_entities,
+            "total_missing": len(missing_entities)
+        }
+        typer.echo(json.dumps(result, indent=2))
+    elif format == OutputFormat.csv:
+        if missing_entities:
+            writer = csv.DictWriter(sys.stdout, fieldnames=['entity_id', 'category', 'doc_id'])
+            writer.writeheader()
+            writer.writerows(missing_entities)
+        else:
+            # Write empty CSV with headers
+            writer = csv.DictWriter(sys.stdout, fieldnames=['entity_id', 'category', 'doc_id'])
+            writer.writeheader()
+    else:
+        # Text format (default)
+        if valid:
+            print("All entity references are valid")
+        else:
+            print("Some entity references are invalid. See warnings above.")
+    
+    return 0 if valid else 1
 
 def extract_entity_names(config):
     """Extract potential entity names from a configuration dictionary."""
