@@ -300,7 +300,9 @@ def tax_zip(
     config_file: Optional[str] = typer.Option(None, help="Path to base configuration file"),
     private_config_file: Optional[str] = typer.Option(None, help="Path to private configuration file"),
     directory_mapping_file: Optional[str] = typer.Option(None, help="Path to directory mapping file"),
-    dummy: bool = typer.Option(False, help="Run in dummy mode without creating zip")
+    dummy: bool = typer.Option(False, help="Run in dummy mode without creating zip"),
+    output_path: Optional[str] = typer.Option(None, "--output", "-o", help="Path where to save the zip file"),
+    password: Optional[str] = typer.Option(None, "--password", "-p", help="Password for the zip file")
 ):
     """Create zip archive of tax documents."""
     logger = logging.getLogger('finx')
@@ -316,6 +318,8 @@ def tax_zip(
         config_file=config_file,
         private_config_file=private_config_file,
         directory_mapping_file=directory_mapping_file,
+        output_path=output_path,
+        password=password,
         verbose=verbose
     )
     

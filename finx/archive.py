@@ -7,6 +7,13 @@ import zipfile
 from pathlib import Path
 from getpass import getpass
 
+# Try to import pyzipper for password protection
+try:
+    import pyzipper
+    PYZIPPER_AVAILABLE = True
+except ImportError:
+    PYZIPPER_AVAILABLE = False
+
 def check_missing_files(checker, year=None):
     """
     Check for missing files using the FinancialDocumentManager.
@@ -75,7 +82,7 @@ def create_zip_archive(year=None, dummy=False, base_path=None, config_file=None,
 
 def create_password_protected_zip(checker, year=None, output_path=None, password=None, dummy=False):
     """
-    Create a password-protected zip file containing tax documents.
+    Create a zip file containing tax documents, optionally password-protected if pyzipper is available.
     
     Args:
         checker: FinancialDocumentManager instance
@@ -161,18 +168,49 @@ def create_password_protected_zip(checker, year=None, output_path=None, password
     
     # Create the zip file
     try:
+        # Check if password protection is requested and if pyzipper is available
+        if password:
+            # Attempt to use pyzipper for password protection
+            try:
+                import pyzipper
+                password_protection_available = True
+            except ImportError:
+                print("\nWARNING: Password protection requested but 'pyzipper' module not found.")
+                print("The zip file will be created without password protection.")
+                print("To enable password protection, install pyzipper: pip install pyzipper")
+                password_protection_available = False
+                
+            if password_protection_available:
+                # Create password-protected zip with pyzipper
+                with pyzipper.AESZipFile(output_path, 'w', 
+                                     compression=pyzipper.ZIP_LZMA, 
+                                     encryption=pyzipper.WZ_AES) as zipf:
+                    zipf.setpassword(password.encode('utf-8'))
+                    # Add each file to the zip
+                    for file_path in files_to_zip:
+                        rel_path = os.path.relpath(file_path, checker.base_path)
+                        print(f"Adding: {rel_path}")
+                        zipf.write(file_path, rel_path)
+                
+                print(f"\nSuccessfully created password-protected zip file: {output_path}")
+                print(f"Total files included: {len(files_to_zip)}")
+                return True
+        
+        # If we get here, either no password was provided or pyzipper is not available
+        # Create regular unencrypted zip
         with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            # Add each file to the zip
             for file_path in files_to_zip:
-                # Get the relative path for the file in the zip
                 rel_path = os.path.relpath(file_path, checker.base_path)
                 print(f"Adding: {rel_path}")
-                zipf.write(file_path, rel_path, pwd=password.encode() if password else None)
+                zipf.write(file_path, rel_path)
         
-        print(f"\nSuccessfully created password-protected zip file: {output_path}")
+        if password:
+            print(f"\nCreated zip file (NOT password-protected): {output_path}")
+        else:
+            print(f"\nSuccessfully created zip file: {output_path}")
         print(f"Total files included: {len(files_to_zip)}")
         return True
-    
+        
     except Exception as e:
         print(f"Error creating zip file: {str(e)}")
         return False 

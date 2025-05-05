@@ -163,15 +163,23 @@ class TestArchive(TestCase):
         }
         mock_checker.find_files_matching_pattern.return_value = ['/test/file.pdf']
         
+        # Create a mock pyzipper module
+        mock_pyzipper = MagicMock()
+        mock_aes_zipfile = MagicMock()
+        mock_aes_zipfile_instance = MagicMock()
+        mock_aes_zipfile.return_value.__enter__.return_value = mock_aes_zipfile_instance
+        mock_pyzipper.AESZipFile = mock_aes_zipfile
+        mock_pyzipper.ZIP_LZMA = 'lzma'
+        mock_pyzipper.WZ_AES = 'aes'
+        
         # Test in real mode with password
         with patch('finx.archive.check_missing_files') as mock_check_missing:
             mock_check_missing.return_value = ([], True)
             
-            with patch('builtins.print'):
-                with patch('zipfile.ZipFile') as mock_zipfile:
-                    mock_zip_instance = MagicMock()
-                    mock_zipfile.return_value.__enter__.return_value = mock_zip_instance
-                    
+            # Mock the import to return our mock module
+            with patch('builtins.__import__', side_effect=lambda name, *args, **kwargs: 
+                      mock_pyzipper if name == 'pyzipper' else __import__(name, *args, **kwargs)):
+                with patch('builtins.print'):
                     result = create_password_protected_zip(
                         mock_checker, 
                         password='test_password',
@@ -179,8 +187,15 @@ class TestArchive(TestCase):
                     )
                     
                     assert result is True
-                    mock_zipfile.assert_called_once_with('test.zip', 'w', zipfile.ZIP_DEFLATED)
-                    mock_zip_instance.write.assert_called_once()
+                    
+                    # Verify AESZipFile was called with correct parameters
+                    mock_aes_zipfile.assert_called_once_with(
+                        'test.zip', 'w', 
+                        compression='lzma', 
+                        encryption='aes'
+                    )
+                    # Verify password was set
+                    mock_aes_zipfile_instance.setpassword.assert_called_once_with(b'test_password')
     
     def test_create_password_protected_zip_with_password_mismatch(self):
         """Test create_password_protected_zip with password mismatch."""
@@ -238,4 +253,46 @@ class TestArchive(TestCase):
                         password='test_password'
                     )
                     
-                    assert result is False 
+                    assert result is False
+
+    def test_create_password_protected_zip_without_pyzipper(self):
+        """Test create_password_protected_zip without pyzipper available."""
+        mock_checker = MagicMock()
+        mock_checker.list_available_years.return_value = ['2023']
+        mock_checker.base_path = '/test'
+        mock_checker.required_patterns = {
+            'bank': [
+                {
+                    'pattern': 'test_pattern',
+                    'name': 'test_doc'
+                }
+            ]
+        }
+        mock_checker.find_files_matching_pattern.return_value = ['/test/file.pdf']
+        
+        # Test in real mode with password but without pyzipper
+        with patch('finx.archive.check_missing_files') as mock_check_missing:
+            mock_check_missing.return_value = ([], True)
+            
+            # Mock the import to raise ImportError for pyzipper
+            with patch('builtins.__import__', side_effect=lambda name, *args, **kwargs: 
+                      raise_import_error(name, *args, **kwargs) if name == 'pyzipper' else __import__(name, *args, **kwargs)):
+                with patch('builtins.print'):
+                    with patch('zipfile.ZipFile') as mock_zipfile:
+                        mock_zip_instance = MagicMock()
+                        mock_zipfile.return_value.__enter__.return_value = mock_zip_instance
+                        
+                        result = create_password_protected_zip(
+                            mock_checker, 
+                            password='test_password',
+                            output_path='test.zip'
+                        )
+                        
+                        assert result is True
+                        
+                        # Verify normal ZipFile was used as fallback
+                        mock_zipfile.assert_called_once_with('test.zip', 'w', zipfile.ZIP_DEFLATED)
+
+# Helper function for raising ImportError
+def raise_import_error(name, *args, **kwargs):
+    raise ImportError(f"No module named '{name}'") 
