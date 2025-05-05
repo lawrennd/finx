@@ -35,6 +35,8 @@ This file provides an overview of all current backlog items organized by categor
 
 - [Add Encryption Integration Tests](infrastructure/2025-05-05_encryption-integration-tests.md)
 
+- [Add GitHub Actions Matrix for Encryption Testing](infrastructure/2025-05-05_github-actions-encryption-testing.md)
+
 
 ## Features
 
