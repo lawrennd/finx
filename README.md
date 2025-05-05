@@ -1,8 +1,8 @@
 # Finance Assistant
 
-[![Tests](https://github.com/lawrennd/tax_document_checker/actions/workflows/tests.yml/badge.svg)](https://github.com/lawrennd/tax_document_checker/actions/workflows/tests.yml)
-[![codecov](https://codecov.io/gh/lawrennd/tax_document_checker/branch/main/graph/badge.svg)](https://codecov.io/gh/lawrennd/tax_document_checker)
-[![Python Versions](https://img.shields.io/pypi/pyversions/tax-document-checker.svg)](https://pypi.org/project/tax-document-checker/)
+[![Tests](https://github.com/lawrennd/finx/actions/workflows/tests.yml/badge.svg)](https://github.com/lawrennd/finx/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/lawrennd/finx/branch/main/graph/badge.svg)](https://codecov.io/gh/lawrennd/finx)
+[![Python Versions](https://img.shields.io/pypi/pyversions/finx.svg)](https://pypi.org/project/finx/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A command-line toolkit for managing personal finances, including tax document organization.
