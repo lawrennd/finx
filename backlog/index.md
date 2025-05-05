@@ -69,7 +69,7 @@ This file provides an overview of all current backlog items organized by categor
 
 ### Proposed
 
-*No tasks currently proposed.*
+- [Fix PyZipper Test Recursion Error in CI](bugs/2025-05-05_fix-pyzipper-tests-recursion.md)
 
 
 ---
