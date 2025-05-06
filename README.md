@@ -13,26 +13,26 @@ A command-line toolkit for managing personal finances, including tax document or
 
 ## Current Features
 
-- **Tax document management**: Track, validate, and organize your tax documents
+- *Tax document management*: Track, validate, and organize your tax documents
   - Check for missing documents based on configurable patterns
   - Support for different document frequencies (monthly, quarterly, yearly)
   - Automatic date extraction from filenames
   - Validation of document completeness for specific tax years
   - Multiple output formats (text, JSON, CSV)
 
-- **Entity management**: Track contact details for financial entities
+- *Entity management*: Track contact details for financial entities
   - Store contact information for accountants, banks, and other financial entities
   - Support for different entity types (accountants, banks, investment platforms, etc.)
   - Check for missing entity information in configuration files
   - Maintain addresses, URLs, and notes for each entity
 
-## Planned Features (Coming Soon)
+## Planned Features (in my imagination)
 
-- **Investment tracking**: Monitor investment performance across accounts
-- **Net worth calculation**: Track assets and liabilities over time
-- **Budget management**: Track income and expenses
-- **Estate planning**: Document organization for wills and estate planning
-- **Savings goals**: Track progress towards savings targets
+- *Investment tracking*: Monitor investment performance across accounts
+- *Net worth calculation*: Track assets and liabilities over time
+- *Budget management*: Track income and expenses
+- *Estate planning*: Document organization for wills and estate planning
+- *Savings goals*: Track progress towards savings targets
 
 ## Installation
 
@@ -96,15 +96,15 @@ finx entities validate --config=your_config.yml --entities=your_entities.yml
 ```
 
 The tool maintains a database of financial entities and their contact details in `finx_entities.yml`. Each entity can be one of the following types:
-- **accountant**: Tax and accounting services
-- **bank**: Banking institutions
-- **investment**: Investment platforms and brokers
-- **insurance**: Insurance providers
-- **legal**: Legal services
-- **government**: Government agencies (HMRC, IRS, etc.)
-- **employer**: Current and previous employers
-- **utility**: Utility providers
-- **other**: Other financial entities
+- *accountant*: Tax and accounting services
+- *bank*: Banking institutions
+- *investment*: Investment platforms and brokers
+- *insurance*: Insurance providers
+- *legal*: Legal services
+- *government*: Government agencies (HMRC, IRS, etc.)
+- *employer*: Current and previous employers
+- *utility*: Utility providers
+- *other*: Other financial entities
 
 The `check` command compares entities mentioned in your configuration files with those in the entities database, helping you maintain complete contact information for all your financial relationships.
 
@@ -165,17 +165,17 @@ For common workflows and practical examples, see the [Common Workflows Guide](do
 
 The tool uses YAML configuration files to separate public patterns from private account information:
 
-- **Base Configuration**: Public patterns and configurations that can be shared
-- **Private Configuration**: Account-specific information (not committed to version control)
-- **Directory Mapping**: Defines where different document types are stored
-- **Entity Database**: Stores contact details for financial entities
+- *Base Configuration*: Public patterns and configurations that can be shared
+- *Private Configuration*: Account-specific information (not committed to version control)
+- *Directory Mapping*: Defines where different document types are stored
+- *Entity Database*: Stores contact details for financial entities
 
 ### Dual ID System
 
 The finance document configuration specifies two ids for all entries in configuration files:
 
-- **id**: A unique identifier for each document type (e.g., `current-employer-payslip`)
-- **entity_id**: A reference to the entity in the `finx_entities.yml` file (e.g., `current-employer`)
+- *id*: A unique identifier for each document type (e.g., `current-employer-payslip`)
+- *entity_id*: A reference to the entity in the `finx_entities.yml` file (e.g., `current-employer`)
 
 For guidance on migrating existing configurations to the dual ID system, see the [Migration Guide](docs/dual_id_migration.md).
 
